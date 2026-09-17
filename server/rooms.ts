@@ -9,6 +9,7 @@ import type { Clock } from './clock.ts';
 import { createDayDriver, type DayDriver } from './day-driver.ts';
 import type { LogStore, StoredMessage } from './log-store.ts';
 import { createNightDriver, type NightDriver } from './night-driver.ts';
+import { queuedClock } from './queued-clock.ts';
 import type { Broadcaster } from './realtime.ts';
 
 export type GameDriver = NightDriver | DayDriver;
@@ -95,7 +96,7 @@ export class Room {
     this.code = code;
     this.gameId = gameId;
     this.hostPlayerId = host.playerId;
-    this.ruleset = ruleset;
+    this.ruleset = structuredClone(ruleset);
     this.members.push(host);
   }
 
@@ -114,6 +115,7 @@ export class Room {
 }
 
 export interface RoomDeps {
+  readonly strictWindows?: boolean;
   readonly clock: Clock;
   readonly ruleset: RulesetConfig;
   readonly logStore: LogStore;
@@ -327,7 +329,8 @@ export class RoomRegistry {
 
   #startNight(room: Room, state: GameState): void {
     const driver = createNightDriver({
-      clock: this.#deps.clock,
+      strictWindows: this.#deps.strictWindows,
+      clock: this.#deps.strictWindows ? queuedClock(this.#deps.clock, (task) => room.enqueue(task)) : this.#deps.clock,
       onStep: (step) => this.#step(room, step),
       onComplete: (next) => {
         if (next.phase === 'day') {
@@ -335,13 +338,14 @@ export class RoomRegistry {
         }
       },
     });
-    driver.start(state);
     room.driver = driver;
+    driver.start(state);
   }
 
   #startDay(room: Room, state: GameState): void {
     const driver = createDayDriver({
-      clock: this.#deps.clock,
+      strictWindows: this.#deps.strictWindows,
+      clock: this.#deps.strictWindows ? queuedClock(this.#deps.clock, (task) => room.enqueue(task)) : this.#deps.clock,
       onStep: (step) => this.#step(room, step),
       onComplete: (next) => {
         if (next.phase === 'night') {
@@ -349,8 +353,8 @@ export class RoomRegistry {
         }
       },
     });
-    driver.start(state);
     room.driver = driver;
+    driver.start(state);
   }
 
   logMessage(room: Room, message: ChatMessage): void {

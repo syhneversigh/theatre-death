@@ -133,7 +133,8 @@ export function createDayDriver(options: {
     phase = id;
     generation += 1;
     closesAt = clock.now() + seconds * 1000;
-    handles.push(clock.schedule(seconds * 1000, callback));
+    const scheduledGeneration = generation;
+    handles.push(clock.schedule(seconds * 1000, () => { if (generation === scheduledGeneration && phase !== 'done') callback(); }));
   }
 
   function eligibleVoterCount(game: GameState): number {
@@ -287,6 +288,7 @@ export function createDayDriver(options: {
     if (phase !== expected) {
       return rejected('window_not_open', '当前不在该行动窗口');
     }
+    if (clock.now() >= closesAt) return rejected('window_closed', closedMessage);
     const game = current();
     if (game.win !== null) {
       return rejected('game_ended', '对局已经结束');
@@ -362,6 +364,7 @@ export function createDayDriver(options: {
     if (phase !== 'election_signup' && phase !== 'election_speech') {
       return rejected('window_not_open', '当前不在竞选报名或发言窗口');
     }
+    if (clock.now() >= closesAt) return rejected('window_closed', '竞选窗口已截止');
     const issue = withdrawCandidacyIssue(game, playerId);
     if (issue !== null) {
       return rejectedIssue(issue);
@@ -540,6 +543,7 @@ export function createDayDriver(options: {
         clock.cancel(handle);
       }
       handles.length = 0;
+      phase = 'done';
     },
   };
 }
