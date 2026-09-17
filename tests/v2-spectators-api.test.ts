@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createServer, type Server } from 'node:http';
+import { io as ioClient } from 'socket.io-client';
 import { AccountStore } from '../server/v2/account-store.ts';
 import { createV2App } from '../server/v2/app.ts';
 import { createFakeClock, type FakeClock } from '../server/clock.ts';
@@ -44,10 +45,10 @@ async function request(h: Harness, path: string, init: RequestInit = {}, user?: 
 function post(body: unknown): RequestInit { return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }; }
 async function json(response: Response): Promise<Record<string, unknown>> { return (await response.json()) as Record<string, unknown>; }
 
-async function createRoom(h: Harness) {
-  const response = await request(h, '/api/v2/rooms', post({ nickname: h.users[0]!.username }), h.users[0]);
+async function createRoom(h: Harness, user = h.users[0]!) {
+  const response = await request(h, '/api/v2/rooms', post({ nickname: user.username }), user);
   expect(response.status).toBe(201);
-  return (await json(response)) as { roomCode: string; gameId: string };
+  return (await json(response)) as { roomCode: string; gameId: string; playerId: string };
 }
 
 async function startFullRoom(h: Harness) {
@@ -118,5 +119,56 @@ describe('v2 public spectator HTTP API', () => {
     const kicked = await request(h, `/api/v2/rooms/${room.roomCode}/kick-spectator`, post({ spectatorId: kickedId }), h.users[0]);
     expect(kicked.status).toBe(200);
     expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[13])).status).toBe(403);
+  });
+
+  it('authorizes the seated player to issue a second-screen invite and exposes only that subject read-only', async () => {
+    const h = await makeHarness();
+    const room = await startFullRoom(h);
+    const meta = h.app.access.get(room.gameId)!;
+    expect((await request(h, `/api/v2/rooms/${room.roomCode}/second-screen/invitations`, post({}), h.users[13])).status).toBe(403);
+    const issued = await request(h, `/api/v2/rooms/${room.roomCode}/second-screen/invitations`, post({}), h.users[0]);
+    expect(issued.status).toBe(201);
+    const token = String((await json(issued)).token);
+    const secondSession = meta.accounts.createSession(h.users[0]!.userId);
+    const second = { ...h.users[0]!, cookie: `td_account_v2=${secondSession.token}` };
+    expect((await request(h, `/api/v2/rooms/${room.roomCode}/second-screen/redeem`, post({ token }), second)).status).toBe(403);
+    const redeemed = await request(h, `/api/v2/rooms/${room.roomCode}/second-screen/redeem`, post({ token }), h.users[13]);
+    expect(redeemed.status).toBe(201);
+    const view = await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[13]);
+    const snapshot = await json(view);
+    expect((snapshot.private as { self: { playerId: string } }).self.playerId).toBe(room.playerId);
+    expect(snapshot.capabilities).toMatchObject({ allowedCommands: [] });
+    for (const [path, body] of [
+      [`/api/v2/rooms/${room.roomCode}/command`, { requestId: 'private-command', action: 'END_SPEECH', windowInstanceId: 'none' }],
+      [`/api/v2/rooms/${room.roomCode}/chat`, { channel: 'public', text: 'blocked' }],
+    ] as const) expect((await request(h, path, post(body), h.users[13])).status).toBe(403);
+
+    const frames: unknown[] = [];
+    const socket = ioClient(h.base, { path: '/api/v2/socket.io', auth: { gameId: room.gameId }, extraHeaders: { cookie: h.users[13]!.cookie }, reconnection: false });
+    socket.on('view_updated', (frame) => frames.push(frame));
+    await new Promise<void>((resolve, reject) => { socket.once('connect', () => resolve()); socket.once('connect_error', reject); });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect((frames[0] as { private: { self: { playerId: string } } }).private.self.playerId).toBe(room.playerId);
+    const disconnected = new Promise<void>((resolve) => socket.once('disconnect', () => resolve()));
+    expect((await request(h, `/api/v2/rooms/${room.roomCode}/second-screen/revoke`, post({}), h.users[0])).status).toBe(200);
+    await disconnected;
+    expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[13])).status).toBe(403);
+    socket.disconnect();
+  });
+
+  it('rejects invalid, expired, cross-room, and repeated second-screen redemption', async () => {
+    const h = await makeHarness();
+    const first = await createRoom(h);
+    const issued = await request(h, `/api/v2/rooms/${first.roomCode}/second-screen/invitations`, post({}), h.users[0]);
+    const token = String((await json(issued)).token);
+    expect((await request(h, `/api/v2/rooms/${first.roomCode}/second-screen/redeem`, post({ token: 'invalid-token' }), h.users[12])).status).toBe(403);
+    const second = await createRoom(h, h.users[1]);
+    expect((await request(h, `/api/v2/rooms/${second.roomCode}/second-screen/redeem`, post({ token }), h.users[12])).status).toBe(403);
+    expect((await request(h, `/api/v2/rooms/${first.roomCode}/second-screen/redeem`, post({ token }), h.users[12])).status).toBe(201);
+    expect((await request(h, `/api/v2/rooms/${first.roomCode}/second-screen/redeem`, post({ token }), h.users[11])).status).toBe(403);
+    const expires = await request(h, `/api/v2/rooms/${first.roomCode}/second-screen/invitations`, post({}), h.users[0]);
+    const expiresToken = String((await json(expires)).token);
+    h.clock.advance(300_001);
+    expect((await request(h, `/api/v2/rooms/${first.roomCode}/second-screen/redeem`, post({ token: expiresToken }), h.users[11])).status).toBe(403);
   });
 });

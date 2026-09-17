@@ -21,5 +21,6 @@
 | 15 账号认证 | 完成 | Luna：passwords4 + auth-v2 4；typecheck通过 |
 | 16 席位与HTTP | 完成 | Luna：access-v2 6（含观战基础）+v2-api5；真实Socket接管、真实窗口截止及跨人同ID验证 |
 | 17 公开观战 | 完成 | Luna：v2-spectators-api3 + v2-api5；typecheck通过 |
+| 18 私人第二屏 | 完成 | Luna：v2-spectators-api5 + access-v2 6；真实Socket撤销验证；typecheck通过 |
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。
