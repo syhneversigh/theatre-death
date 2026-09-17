@@ -16,6 +16,7 @@ import { chatView, createV2Realtime } from './realtime.ts';
 import { gameView } from './view.ts';
 import { parseCommand } from './parse-command.ts';
 import { RateLimits } from './rate-limit.ts';
+import { publicSpectatorRouter } from './spectators.ts';
 
 export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; secureCookies?: boolean; voice?: VoiceService | null }
 export function createV2App(deps: V2Deps) {
@@ -173,6 +174,7 @@ export function createV2App(deps: V2Deps) {
       meta.removeSeat(id); return { removed: true };
     }));
   });
+  router.use(publicSpectatorRouter({ accounts, clock, registry, access, refresh: hub.refresh }));
   app.use('/api/v2', router);
   app.use((_req, res) => res.status(404).json({ error: { code: 'not_found' } }));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {

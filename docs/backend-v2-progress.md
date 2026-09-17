@@ -17,5 +17,9 @@
 | 11 首日竞选 | 完成 | Luna：v2-first-election5 + engine-day23 + day-driver9 + knowledge8；typecheck通过 |
 | 12 计时调整 | 完成 | Luna：v2-timers4 + first-election5 + victory5 + day-driver9 + voice-policy9 + capabilities5；typecheck通过 |
 | 13 团队兜底 | 完成 | Luna：v2-proposal6 + engine-proposal8 + night-driver14 + rulesets18；typecheck通过 |
+| 14 账号存储 | 完成 | Luna：account-store5；修复首轮SQL占位错误后通过 |
+| 15 账号认证 | 完成 | Luna：passwords4 + auth-v2 4；typecheck通过 |
+| 16 席位与HTTP | 完成 | Luna：access-v2 6（含观战基础）+v2-api5；真实Socket接管、真实窗口截止及跨人同ID验证 |
+| 17 公开观战 | 完成 | Luna：v2-spectators-api3 + v2-api5；typecheck通过 |
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。
