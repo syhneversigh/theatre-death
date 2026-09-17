@@ -61,5 +61,6 @@ export function createV2Realtime(resolve: ResolveViewer, now: () => number, orig
       io.on('connection', (socket) => { refresh(socket.data.gameId as string); });
     },
     close() { io?.close(); },
+    hasConnections(gameId: string) { return [...(io?.sockets.sockets.values() ?? [])].some((s) => s.data.gameId === gameId); },
   };
 }

@@ -365,6 +365,15 @@ export class RoomRegistry {
     return this.#roomsByCode.get(code) ?? null;
   }
 
+  /** Called by v2 lifecycle policy only after it has selected an eligible idle/ended room. Audit rows stay intact. */
+  disposeRoom(gameId: string): void {
+    const room = this.#roomsByGameId.get(gameId);
+    if (!room) return;
+    room.driver?.dispose();
+    this.#roomsByCode.delete(room.code);
+    this.#roomsByGameId.delete(gameId);
+  }
+
   getByGameId(gameId: string): Room | null {
     return this.#roomsByGameId.get(gameId) ?? null;
   }
