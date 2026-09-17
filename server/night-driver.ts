@@ -299,7 +299,9 @@ export function createNightDriver(options: {
   }
 
   function finishNight(): void {
-    step(resolveMorning(current()));
+    if (current().ruleset.version === '2.0' && current().dayNumber === 1 && current().ruleset.sheriff.enabled) {
+      step({ state: { ...current(), phase: 'day', preAnnouncementElection: true }, events: [] });
+    } else step(resolveMorning(current()));
     phase = 'done';
     onComplete?.(current());
   }

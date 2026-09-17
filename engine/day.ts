@@ -30,7 +30,7 @@ const VOTE_UNITS_PER_VOTE = 2;
 
 /** 投票资格：死者不可投；莱莱可翻牌且处一阶段禁投（持天理时票权同步冻结，R-44、R-16） */
 export function voteEligibility(state: GameState, playerId: string): VoteEligibility {
-  const player = state.players.find((item) => item.playerId === playerId);
+  const player = playerOf(state, playerId);
   if (player === undefined) {
     return 'unknown';
   }
@@ -90,7 +90,9 @@ export function currentTieSpeechSpeaker(state: GameState): string | null {
 }
 
 function playerOf(state: GameState, playerId: string): PlayerState | undefined {
-  return state.players.find((item) => item.playerId === playerId);
+  const player = state.players.find((item) => item.playerId === playerId);
+  if (player && state.preAnnouncementElection) return { ...player, life: state.night?.eligibleAtStart?.includes(playerId) ? 'alive' : 'dead', revealed: false, voteFrozen: false };
+  return player;
 }
 
 function seatOf(state: GameState, playerId: string): number {
@@ -102,7 +104,7 @@ function seatOf(state: GameState, playerId: string): number {
 }
 
 function aliveSorted(state: GameState): readonly PlayerState[] {
-  return [...state.players].filter((player) => player.life !== 'dead').sort((a, b) => a.seat - b.seat);
+  return state.players.map((p) => playerOf(state, p.playerId)!).filter((player) => player.life !== 'dead').sort((a, b) => a.seat - b.seat);
 }
 
 function eligibleVoters(state: GameState): readonly string[] {
@@ -211,7 +213,7 @@ function enterElectionOrSpeech(
   state: GameState,
   emitter: EventCollector,
 ): { step: DayStep; election: ElectionState | null } {
-  if (state.dayNumber === 1 && state.ruleset.sheriff.enabled) {
+  if (state.dayNumber === 1 && state.ruleset.sheriff.enabled && !state.firstDayElectionDone) {
     emitter.emit('election_started', { phase: 'signup' }, { kind: 'public' });
     return { step: 'election', election: makeElection(state) };
   }
@@ -249,9 +251,9 @@ export function beginDay(state: GameState): { state: GameState; events: GameEven
   }
   const emitter = emitterFor(state);
 
-  const handover = handoverAfterDeath(state, state.players);
+  const handover = state.preAnnouncementElection ? null : handoverAfterDeath(state, state.players);
   const firstNightDeaths =
-    state.dayNumber === 1 && state.night !== null ? state.night.deaths : ([] as readonly string[]);
+    !state.preAnnouncementElection && state.dayNumber === 1 && state.night !== null ? state.night.deaths.filter((id) => playerOf(state, id)?.life === 'dead') : ([] as readonly string[]);
 
   let step: DayStep;
   let lastWords: PacedQueue | null = null;
@@ -446,7 +448,7 @@ function finishElection(
     { winnerSeat: winnerId === null ? null : seatOf(state, winnerId), reason },
     { kind: 'public' },
   );
-  const next = enterSpeechRound(nextState, emitter);
+  const next = state.preAnnouncementElection ? { step: 'morning_announcement' as const } : enterSpeechRound(nextState, emitter);
   return {
     state: nextState,
     step: next.step,

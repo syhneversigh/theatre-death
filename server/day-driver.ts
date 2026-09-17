@@ -36,6 +36,7 @@ import type { Clock, ClockHandle } from './clock.ts';
 import type { GameCommand } from './commands.ts';
 import type { LiveWindow, ProposalView, SubmitResult } from './night-driver.ts';
 import { windowIssue } from './windows.ts';
+import { resolveMorning } from '../engine/morning.ts';
 
 export type DayWindowId =
   | 'last_words'
@@ -139,7 +140,7 @@ export function createDayDriver(options: {
 
   function eligibleVoterCount(game: GameState): number {
     return game.players.filter(
-      (player) => player.life !== 'dead' && voteEligibility(game, player.playerId) === 'ok',
+      (player) => voteEligibility(game, player.playerId) === 'ok',
     ).length;
   }
 
@@ -152,6 +153,13 @@ export function createDayDriver(options: {
     }
     const context = day();
     switch (context.step) {
+      case 'morning_announcement': {
+        const announced = resolveMorning({ ...current(), phase: 'morning', day: null, preAnnouncementElection: false, firstDayElectionDone: true });
+        step(announced);
+        if (announced.state.win === null) step(beginDay(announced.state));
+        openNext();
+        return;
+      }
       case 'first_night_last_words':
       case 'elimination_last_words':
         scheduleWindow('last_words', timers().lastWords, timeoutLastWords);
