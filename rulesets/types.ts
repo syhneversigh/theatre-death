@@ -65,7 +65,7 @@ export interface RulesetConfig {
   readonly timersSeconds: TimersSeconds;
   readonly sheriff: SheriffConfig;
   readonly lastWords: LastWordsConfig;
-  readonly teamConfirm: 'unanimous_by_revision';
+  readonly teamConfirm: 'unanimous_by_revision' | 'unanimous_or_latest';
   readonly duplicateTargetPolicy: 'allow' | 'forbid';
   readonly attackOrder: 'seat_asc_then_source_priority';
   readonly researcherAnnouncement: ResearcherAnnouncementConfig;

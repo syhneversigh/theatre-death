@@ -147,7 +147,7 @@ export function validateRuleset(input: unknown): ValidationResult {
   }
 
   const policies: ReadonlyArray<readonly [unknown, readonly unknown[], string]> = [
-    [input.teamConfirm, ['unanimous_by_revision'], 'teamConfirm'],
+    [input.teamConfirm, ['unanimous_by_revision', 'unanimous_or_latest'], 'teamConfirm'],
     [input.duplicateTargetPolicy, ['allow', 'forbid'], 'duplicateTargetPolicy'],
     [input.attackOrder, ['seat_asc_then_source_priority'], 'attackOrder'],
     [input.stageTriggerSnapshot, ['death_event', 'final_state'], 'stageTriggerSnapshot'],

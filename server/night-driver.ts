@@ -16,6 +16,7 @@ import {
   createProposalState,
   editProposal,
   lockedVersion,
+  resolvedProposal,
   type ProposalState,
 } from '../engine/proposal.ts';
 import type { GameState, PlayerState } from '../engine/types.ts';
@@ -205,8 +206,8 @@ export function createNightDriver(options: {
   function assembleAttackInput(): AttackPhaseInput {
     const game = current();
     if (game.nightStage === 1) {
-      const deathLocked = lockedVersion(deathProposal, livingIds('death'));
-      const spiritLocked = lockedVersion(spiritProposal, livingIds('spirit'));
+      const deathLocked = resolvedProposal(deathProposal, livingIds('death'), game.ruleset.teamConfirm === 'unanimous_or_latest');
+      const spiritLocked = resolvedProposal(spiritProposal, livingIds('spirit'), game.ruleset.teamConfirm === 'unanimous_or_latest');
       return {
         guardTargetIds: guardSubmission?.targetIds ?? [],
         stage1DeathTargetIds: deathLocked?.targetPlayerIds ?? [],
@@ -215,7 +216,7 @@ export function createNightDriver(options: {
         laikeTargetId: laikeSubmission?.targetId ?? null,
       };
     }
-    const jointLocked = lockedVersion(jointProposal, [...livingIds('death'), ...livingIds('spirit')]);
+    const jointLocked = resolvedProposal(jointProposal, [...livingIds('death'), ...livingIds('spirit')], game.ruleset.teamConfirm === 'unanimous_or_latest');
     return {
       guardTargetIds: guardSubmission?.targetIds ?? [],
       stage1DeathTargetIds: [],
