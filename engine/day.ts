@@ -169,7 +169,7 @@ function requireStep(state: GameState, step: DayStep): DayValidationIssue | null
 }
 
 /** 卸任天理已死且尚未移交时建立移交待办（R-46） */
-function handoverAfterDeath(state: GameState, players: readonly PlayerState[]): HandoverState | null {
+function handoverAfterDeath(state: GameState, players: readonly PlayerState[], cause: 'night_death' | 'day_elimination' = 'night_death'): HandoverState | null {
   if (!state.ruleset.sheriff.enabled) {
     return null;
   }
@@ -179,7 +179,7 @@ function handoverAfterDeath(state: GameState, players: readonly PlayerState[]): 
   }
   const holder = players.find((player) => player.playerId === holderId);
   if (holder !== undefined && holder.life === 'dead') {
-    return { deadSheriffId: holderId, resolved: false, heirId: null };
+    return { deadSheriffId: holderId, resolved: false, heirId: null, cause, resumeStep: cause === 'night_death' ? 'speech_round' : 'settle' };
   }
   return null;
 }
@@ -269,6 +269,9 @@ export function beginDay(state: GameState): { state: GameState; events: GameEven
       { scope: 'first_night', seat: seatOf(state, queue[0]) },
       { kind: 'public' },
     );
+  } else if (handover !== null) {
+    step = 'handover';
+    emitter.emit('sheriff_handover_started', { fromSeat: seatOf(state, handover.deadSheriffId) }, { kind: 'public' });
   } else {
     const next = enterElectionOrSpeech(state, emitter);
     step = next.step;
@@ -330,9 +333,13 @@ export function endLastWords(
       { kind: 'public' },
     );
   } else if (scope === 'first_night') {
-    const next = enterElectionOrSpeech(state, emitter);
-    step = next.step;
-    election = next.election;
+    if (day.handover !== null && !day.handover.resolved) {
+      step = enterHandoverOrSettle(state, day, emitter);
+    } else {
+      const next = enterElectionOrSpeech(state, emitter);
+      step = next.step;
+      election = next.election;
+    }
   } else {
     step = enterHandoverOrSettle(state, day, emitter);
   }
@@ -997,7 +1004,7 @@ export function settleDayVote(state: GameState): { state: GameState; events: Gam
 
     const dayWithHandover: DayContext = {
       ...day,
-      handover: handoverAfterDeath(state, players),
+      handover: handoverAfterDeath(state, players, 'day_elimination'),
     };
     const elimination = afterElimination(state, dayWithHandover, eliminatedId, emitter);
     updatedDay = {
@@ -1195,9 +1202,10 @@ function performHandover(
   };
   const updated: DayContext = {
     ...day,
-    step: 'settle',
+    step: handover.resumeStep ?? 'settle',
     handover: { ...handover, resolved: true, heirId: targetId },
   };
+  if (updated.step === 'speech_round') enterSpeechRound(nextState, emitter);
   return result(nextState, updated, emitter);
 }
 

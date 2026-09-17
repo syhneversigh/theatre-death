@@ -141,6 +141,8 @@ export interface BallotState {
 }
 
 export interface HandoverState {
+  readonly cause?: 'night_death' | 'day_elimination';
+  readonly resumeStep?: 'speech_round' | 'settle';
   readonly deadSheriffId: string;
   readonly resolved: boolean;
   readonly heirId: string | null;
