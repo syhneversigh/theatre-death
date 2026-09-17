@@ -86,6 +86,6 @@ export type DayCommand =
 
 export type DayCommandType = DayCommand['type'];
 
-export type GameCommand = NightCommand | DayCommand;
+export type GameCommand = (NightCommand | DayCommand) & { readonly windowInstanceId?: string };
 
 export type GameCommandType = GameCommand['type'];

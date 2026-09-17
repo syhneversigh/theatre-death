@@ -35,6 +35,7 @@ import type { DayContext, ElectionState, GameState } from '../engine/types.ts';
 import type { Clock, ClockHandle } from './clock.ts';
 import type { GameCommand } from './commands.ts';
 import type { LiveWindow, ProposalView, SubmitResult } from './night-driver.ts';
+import { windowIssue } from './windows.ts';
 
 export type DayWindowId =
   | 'last_words'
@@ -65,6 +66,7 @@ export interface DayDriver {
 type Phase = 'idle' | DayWindowId | 'done';
 
 export function createDayDriver(options: {
+  readonly strictWindows?: boolean;
   readonly clock: Clock;
   readonly onStep: (result: DayStepResult) => void;
   readonly onComplete?: (state: GameState) => void;
@@ -74,6 +76,11 @@ export function createDayDriver(options: {
   let state: GameState | null = null;
   let phase: Phase = 'idle';
   let closesAt = 0;
+  let generation = 0;
+  function liveWindows(): LiveWindow[] {
+    if (!state || phase === 'idle' || phase === 'done') return [];
+    return [{ id: phase, closesAt, ...(options.strictWindows ? { type: phase, instanceId: `${state.gameId}:day:${state.dayNumber}:${generation}` } : {}) }];
+  }
   const handles: ClockHandle[] = [];
 
   function accepted(): SubmitResult {
@@ -124,6 +131,7 @@ export function createDayDriver(options: {
       clock.cancel(handle);
     }
     phase = id;
+    generation += 1;
     closesAt = clock.now() + seconds * 1000;
     handles.push(clock.schedule(seconds * 1000, callback));
   }
@@ -287,6 +295,10 @@ export function createDayDriver(options: {
   }
 
   function submit(command: GameCommand): SubmitResult {
+    if (options.strictWindows) {
+      const issue = windowIssue(command, liveWindows(), clock.now());
+      if (issue) return issue;
+    }
     if (state === null || phase === 'idle') {
       return rejected('day_not_started', '白天流程尚未开始');
     }
@@ -512,7 +524,7 @@ export function createDayDriver(options: {
       if (state === null || phase === 'idle' || phase === 'done') {
         return [];
       }
-      return [{ id: phase, closesAt }];
+      return liveWindows();
     },
     proposalState(_playerId) {
       return null;

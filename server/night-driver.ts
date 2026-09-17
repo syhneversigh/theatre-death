@@ -22,12 +22,15 @@ import type { GameState, PlayerState } from '../engine/types.ts';
 import type { Clock, ClockHandle } from './clock.ts';
 import type { GameCommand, NightCommand } from './commands.ts';
 import type { NightValidationIssue } from '../engine/night.ts';
+import { windowIssue } from './windows.ts';
 
 export type NightWindowId = 'guard' | 'faction' | 'laike' | 'check' | 'rescue' | 'revive';
 
 export interface LiveWindow {
   readonly id: string;
   readonly closesAt: number;
+  readonly instanceId?: string;
+  readonly type?: string;
 }
 
 /** R-47 阵营协商的本人视角：同池成员可见草稿版本、目标与确认进度 */
@@ -71,6 +74,7 @@ interface PoolRef {
 }
 
 export function createNightDriver(options: {
+  readonly strictWindows?: boolean;
   readonly clock: Clock;
   readonly onStep: (result: NightStepResult) => void;
   readonly onComplete?: (state: GameState) => void;
@@ -96,6 +100,12 @@ export function createNightDriver(options: {
   let jointProposal = createProposalState();
 
   const handles: ClockHandle[] = [];
+
+  function allWindows(): LiveWindow[] {
+    if (!state || phase === 'idle' || phase === 'done') return [];
+    const pairs: [string, number][] = phase === 'segment1' ? [['guard', guardClosesAt], ['faction', factionClosesAt], ['laike', laikeClosesAt]] : phase === 'segment2' ? [['check', checkClosesAt], ...(current().nightStage === 1 ? [['rescue', rescueClosesAt] as [string, number]] : [])] : [['revive', reviveClosesAt]];
+    return pairs.map(([id, closesAt]) => ({ id, closesAt, ...(options.strictWindows ? { type: id, instanceId: `${state!.gameId}:night:${state!.dayNumber}:${id}` } : {}) }));
+  }
 
   function accepted(): SubmitResult {
     return { accepted: true, code: null, message: null };
@@ -475,6 +485,10 @@ export function createNightDriver(options: {
       openSegment1();
     },
     submit(command) {
+      if (options.strictWindows) {
+        const issue = windowIssue(command, allWindows(), clock.now());
+        if (issue) return issue;
+      }
       if (state === null) {
         return rejected('night_not_started', '夜晚尚未开始');
       }
@@ -519,34 +533,7 @@ export function createNightDriver(options: {
       };
     },
     windows() {
-      if (state === null || phase === 'idle' || phase === 'done') {
-        return [];
-      }
-      const now = clock.now();
-      if (phase === 'segment1') {
-        const list: LiveWindow[] = [];
-        if (now < guardClosesAt) {
-          list.push({ id: 'guard', closesAt: guardClosesAt });
-        }
-        if (now < factionClosesAt) {
-          list.push({ id: 'faction', closesAt: factionClosesAt });
-        }
-        if (now < laikeClosesAt) {
-          list.push({ id: 'laike', closesAt: laikeClosesAt });
-        }
-        return list;
-      }
-      if (phase === 'segment2') {
-        const list: LiveWindow[] = [];
-        if (now < checkClosesAt) {
-          list.push({ id: 'check', closesAt: checkClosesAt });
-        }
-        if (current().nightStage === 1 && now < rescueClosesAt) {
-          list.push({ id: 'rescue', closesAt: rescueClosesAt });
-        }
-        return list;
-      }
-      return [{ id: 'revive', closesAt: reviveClosesAt }];
+      return allWindows().filter((w) => clock.now() < w.closesAt);
     },
     snapshot() {
       return state;
