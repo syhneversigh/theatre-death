@@ -2,6 +2,10 @@ node_modules/
 dist/
 coverage/
 data/
+data-v2/
+data-v2-test/
+test-results-v2/
+.env.v2
 .env
 e2e-results/
 e2e/results/
