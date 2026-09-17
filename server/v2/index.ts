@@ -1,0 +1,31 @@
+import { createServer } from 'node:http';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { WebhookReceiver } from 'livekit-server-sdk';
+import { createSystemClock } from '../clock.ts';
+import { createLogStore } from '../log-store.ts';
+import { createLiveKitVoiceService } from '../../voice/livekit.ts';
+import { configuration } from './config.ts';
+import { AccountStore } from './account-store.ts';
+import { createV2App } from './app.ts';
+
+const config = configuration();
+mkdirSync(config.dataDir, { recursive: true });
+const clock = createSystemClock();
+const accounts = new AccountStore(join(config.dataDir, 'accounts.sqlite'), () => clock.now());
+const logStore = createLogStore(join(config.dataDir, 'audit.sqlite'));
+const voice = config.voiceEnabled ? createLiveKitVoiceService({ adminUrl: process.env.VOICE_ADMIN_URL || process.env.VOICE_SERVICE_URL!, publicUrl: process.env.VOICE_SERVICE_URL!, apiKey: process.env.LIVEKIT_API_KEY!, apiSecret: process.env.LIVEKIT_API_SECRET!, tokenTtlSeconds: 30, removeUnknownParticipants: true }) : null;
+const verifier = voice ? new WebhookReceiver(process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!) : null;
+const backend = createV2App({ accounts, clock, logStore, origin: config.origin, secureCookies: config.secureCookies, voice, ...(verifier ? { verifyWebhook: (body: string, auth?: string) => verifier.receive(body, auth) } : {}) });
+const server = createServer(backend.app);
+backend.hub.attachV2(server);
+backend.maintenance.start();
+server.listen(config.port, '0.0.0.0', () => console.log(`theater-death API v2 listening on ${config.port}`));
+let stopping = false;
+const shutdown = () => {
+  if (stopping) return; stopping = true;
+  backend.close();
+  server.close(() => { void backend.media.drain().finally(() => { accounts.close(); logStore.close(); process.exit(0); }); });
+  setTimeout(() => process.exit(1), 8000).unref();
+};
+process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);

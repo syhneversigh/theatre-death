@@ -87,6 +87,19 @@ describe('v2 HTTP core', () => {
     expect(joined.status).toBe(201);
   });
 
+  it('lobby leave releases a non-host seat and host leave dissolves the room', async () => {
+    const h = await makeHarness();
+    const room = await createRoom(h);
+    expect((await request(h, `/api/v2/rooms/${room.roomCode}/join`, post({ nickname: 'player2' }), h.users[1])).status).toBe(201);
+    const playerLeave = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({}), h.users[1]);
+    expect(playerLeave.status).toBe(200);
+    expect(await json(playerLeave)).toMatchObject({ left: true, seatRetained: false });
+    const hostLeave = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({}), h.users[0]);
+    expect(hostLeave.status).toBe(200);
+    expect(await json(hostLeave)).toMatchObject({ left: true, seatRetained: false });
+    expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[0])).status).toBe(404);
+  });
+
   it('login session 2 does not take over until explicit takeover', async () => {
     const h = await makeHarness();
     const room = await createRoom(h);
@@ -130,6 +143,11 @@ describe('v2 HTTP core', () => {
     expect(guardResult).toMatchObject({ requestId: 'same-request', status: 'accepted' });
     expect(proposalResult).toMatchObject({ requestId: 'same-request', status: 'accepted' });
     expect(meta.room.driver!.proposalState(deathId)?.revision).toBeGreaterThan(0);
+
+    const civilianId = meta.room.state!.players.find((player) => player.roleId === 'civilian')!.playerId;
+    const civilian = h.users.find((user) => user.userId === meta.seats.get(civilianId)!.userId)!;
+    const disabled = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'disabled', action: 'SUBMIT_GUARD', windowInstanceId: guardWindow.instanceId, targets: [guardTarget] }), civilian);
+    expect(await json(disabled)).toMatchObject({ requestId: 'disabled', status: 'rejected', code: 'action_forbidden' });
 
     h.clock.elapse(Math.max(0, guardWindow.closesAt - h.clock.now()) + 1);
     const late = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'late', action: 'SUBMIT_GUARD', windowInstanceId: guardWindow.instanceId, targets: [guardTarget] }), door);

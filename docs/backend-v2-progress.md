@@ -22,5 +22,8 @@
 | 16 席位与HTTP | 完成 | Luna：access-v2 6（含观战基础）+v2-api5；真实Socket接管、真实窗口截止及跨人同ID验证 |
 | 17 公开观战 | 完成 | Luna：v2-spectators-api3 + v2-api5；typecheck通过 |
 | 18 私人第二屏 | 完成 | Luna：v2-spectators-api5 + access-v2 6；真实Socket撤销验证；typecheck通过 |
+| 19 配置与运行保障 | 增量验证通过 | config5；maintenance4 + media6 + voice-livekit7；API6+knowledge8+auth5；auth-race1；原生Node24导入/SQLite初始化、typecheck通过 |
+
+19额外发现：Vitest转换会容忍Node原生type stripping不支持的参数属性；已改显式字段，并启用erasableSyntaxOnly防回归。3001开发容器实际启动健康检查通过，3000旧服务仍正常。容量和候选构建尚未完成。
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。
