@@ -1002,6 +1002,21 @@ export function settleDayVote(state: GameState): { state: GameState; events: Gam
     );
     emitter.emit('elimination_announced', { seat: seatOf(state, eliminatedId) }, { kind: 'public' });
 
+    if (state.ruleset.version === '2.0') {
+      const revealed = applyReveals(players, emitter);
+      players = revealed.players;
+      if (revealed.researcherRevealed) announceResearcherCount(state, players, emitter);
+      const transition = applyStageTransition(state, players, detectStageTrigger(players), emitter);
+      players = transition.players;
+      state = { ...state, players, stage: transition.stage, factionRoom: transition.factionRoom };
+      const win = checkVictory(state);
+      if (win !== null) {
+        emitter.emit('game_ended', { winner: win.winner, reason: win.reason, dayNumber: win.dayNumber }, { kind: 'public' });
+        const { events, eventSeq } = emitter.result();
+        return { state: { ...state, day: null, phase: 'ended', win, eventSeq }, events };
+      }
+    }
+
     const dayWithHandover: DayContext = {
       ...day,
       handover: handoverAfterDeath(state, players, 'day_elimination'),

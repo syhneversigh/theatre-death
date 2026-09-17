@@ -13,5 +13,6 @@
 | 07 截止与队列 | 完成 | Luna：deadline-queue 4 + day-driver 9 + night-driver 14；typecheck通过 |
 | 08 幂等存储 | 完成 | Luna：receipts 4/4；统一在v2请求入口接入 |
 | 09 天理移交 | 完成 | Luna：先复现2失败/1通过，修复后v2-handover3通过（含非法目标/超时），engine-day23+day-driver9通过；旧错误“夜死末尾移交”断言按R46校正 |
+| 10 立即终局 | 完成 | Luna：v2-victory5 + engine-day23 + engine-morning16；typecheck通过 |
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。

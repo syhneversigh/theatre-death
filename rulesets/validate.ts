@@ -1,5 +1,6 @@
 import { DEITY_ROLE_IDS } from './roles.ts';
 import { THEATER_DEATH_13 } from './theater-death-13.ts';
+import { THEATER_DEATH_13_V2 } from './theater-death-13-v2.ts';
 import { ROLE_IDS, type RoleId } from './types.ts';
 
 export interface ValidationIssue {
@@ -173,7 +174,7 @@ export function validateRuleset(input: unknown): ValidationResult {
     }
   }
 
-  if (input.mode === 'formal' && !deepEqual(input, THEATER_DEATH_13)) {
+  if (input.mode === 'formal' && !deepEqual(input, input.version === '2.0' ? THEATER_DEATH_13_V2 : THEATER_DEATH_13)) {
     add(
       'formal_preset_mismatch',
       '正式模式仅允许默认 13 人命名预设（R-54）；变体配置请使用实验模式并在大厅醒目提示',

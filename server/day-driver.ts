@@ -144,6 +144,12 @@ export function createDayDriver(options: {
   }
 
   function openNext(): void {
+    if (current().win !== null || current().phase === 'ended') {
+      for (const handle of handles.splice(0)) clock.cancel(handle);
+      phase = 'done';
+      onComplete?.(current());
+      return;
+    }
     const context = day();
     switch (context.step) {
       case 'first_night_last_words':
