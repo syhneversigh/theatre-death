@@ -169,4 +169,43 @@ describe('LiveKit VoiceAdapter', () => {
     });
     await expect(failing.removeParticipant('g_test', 's_1')).rejects.toThrow('connection refused');
   });
+
+  it('removeUnknownParticipants=true 时 sync 会移除未知 identity', async () => {
+    const removed: string[] = [];
+    const updates: string[] = [];
+    const service = createLiveKitVoiceService({
+      adminUrl: 'http://livekit:7880', publicUrl: 'wss://voice.example.test', apiKey: 'key', apiSecret: 'secret',
+      removeUnknownParticipants: true,
+      roomClient: {
+        listParticipants: async () => [
+          { identity: 'known', permission: { canPublish: false } } as ParticipantInfo,
+          { identity: 'unknown', permission: { canPublish: true } } as ParticipantInfo,
+        ],
+        updateParticipant: async (_room, identity) => { updates.push(identity); return {}; },
+        removeParticipant: async (_room, identity) => { removed.push(identity); return {}; },
+        deleteRoom: async () => undefined,
+      },
+    });
+    await service.syncRoom({ roomName: 'g_test', permissions: new Map([['known', true]]) });
+    expect(removed).toEqual(['unknown']);
+    expect(updates).toEqual(['known']);
+  });
+
+  it('removeUnknownParticipants=false 保持未知 identity 的旧更新行为', async () => {
+    const removed: string[] = [];
+    const updates: string[] = [];
+    const service = createLiveKitVoiceService({
+      adminUrl: 'http://livekit:7880', publicUrl: 'wss://voice.example.test', apiKey: 'key', apiSecret: 'secret',
+      removeUnknownParticipants: false,
+      roomClient: {
+        listParticipants: async () => [{ identity: 'unknown', permission: { canPublish: true } }] as ParticipantInfo[],
+        updateParticipant: async (_room, identity) => { updates.push(identity); return {}; },
+        removeParticipant: async (_room, identity) => { removed.push(identity); return {}; },
+        deleteRoom: async () => undefined,
+      },
+    });
+    await service.syncRoom({ roomName: 'g_test', permissions: new Map() });
+    expect(removed).toEqual([]);
+    expect(updates).toEqual(['unknown']);
+  });
 });

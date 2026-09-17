@@ -35,6 +35,7 @@ type RoomClient = {
 };
 
 export interface LiveKitVoiceOptions {
+  readonly removeUnknownParticipants?: boolean;
   /** 服务端访问 LiveKit 的地址（容器内 http://livekit:7880；Cloud 为 https://*.livekit.cloud） */
   readonly adminUrl: string;
   /** 浏览器访问的 WebSocket 地址（wss://...） */
@@ -91,6 +92,10 @@ export function createLiveKitVoiceService(options: LiveKitVoiceOptions): VoiceSe
         throw error;
       }
       for (const participant of participants) {
+        if (options.removeUnknownParticipants && !permissions.has(participant.identity)) {
+          await roomClient.removeParticipant(roomName, participant.identity);
+          continue;
+        }
         const desired = permissions.get(participant.identity) ?? false;
         const current = participant.permission?.canPublish ?? false;
         if (current === desired) {
