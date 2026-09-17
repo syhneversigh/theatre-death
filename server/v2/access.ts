@@ -17,7 +17,11 @@ export class RoomAccess {
   readonly invitations = new Map<string, ScreenInvite>();
   lastConnectedAt: number;
   endedAt: number | null = null;
-  constructor(readonly room: Room, readonly accounts: AccountStore, readonly now: () => number, private readonly revokeMedia: (identity: string) => void) { this.lastConnectedAt = now(); }
+  readonly room: Room;
+  readonly accounts: AccountStore;
+  readonly now: () => number;
+  private readonly revokeMedia: (identity: string) => void;
+  constructor(room: Room, accounts: AccountStore, now: () => number, revokeMedia: (identity: string) => void) { this.room = room; this.accounts = accounts; this.now = now; this.revokeMedia = revokeMedia; this.lastConnectedAt = now(); }
   bind(playerId: string, session: AccountSession) {
     if ([...this.seats.values()].some((s) => s.userId === session.userId)) throw new ApiError(409, 'already_seated');
     if (this.watchers.has(session.userId)) throw new ApiError(409, 'already_watching');

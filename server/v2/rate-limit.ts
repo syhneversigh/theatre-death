@@ -1,7 +1,8 @@
 /** Bounded, expiring token buckets. Keys are internal and never returned to clients. */
 export class RateLimits {
   private readonly buckets = new Map<string, { tokens: number; at: number }>();
-  constructor(private readonly now: () => number = Date.now) {}
+  private readonly now: () => number;
+  constructor(now: () => number = Date.now) { this.now = now; }
   allow(key: string, burst: number, periodMs: number): boolean {
     const now = this.now();
     if (this.buckets.size >= 10000) {
@@ -10,7 +11,7 @@ export class RateLimits {
     }
     const b = this.buckets.get(key) ?? { tokens: burst, at: now };
     b.tokens = Math.min(burst, b.tokens + Math.max(0, now - b.at) * burst / periodMs);
-    b.at = now;
+    b.at = Math.max(b.at, now);
     const ok = b.tokens >= 1;
     if (ok) b.tokens -= 1;
     this.buckets.set(key, b);

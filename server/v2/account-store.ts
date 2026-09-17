@@ -11,7 +11,9 @@ export interface AccountSession { id: string; userId: string; expiresAt: number 
 /** Separate from game audit storage. Raw invitations, reset tokens and session tokens are never persisted. */
 export class AccountStore {
   readonly db: DatabaseSync;
-  constructor(path: string, readonly now: () => number = Date.now) {
+  readonly now: () => number;
+  constructor(path: string, now: () => number = Date.now) {
+    this.now = now;
     this.db = new DatabaseSync(path);
     this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
     this.db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)');
