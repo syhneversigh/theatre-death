@@ -1,5 +1,7 @@
 import type { GameEvent } from '../engine/events.ts';
 import {
+  descenderCheckIssue,
+  rescueSelectionIssue,
   resolveAttackPhase,
   resolveDescenderCheck,
   resolveNightEnd,
@@ -406,14 +408,8 @@ export function createNightDriver(options: {
 
   function descenderCheckIssueLocal(targetId: string): NightValidationIssue | null {
     const game = current();
-    const target = game.players.find((player) => player.playerId === targetId);
-    if (target === undefined) {
-      return { code: 'unknown_target', message: `查验目标 ${targetId} 不存在` };
-    }
-    if (target.life === 'dead') {
-      return { code: 'target_dead', message: '查验目标已死亡' };
-    }
-    return null;
+    const actor = game.players.find((p) => p.roleId === 'descender');
+    return descenderCheckIssue(game, actor?.playerId ?? '', targetId);
   }
 
   function submitRescue(command: Extract<NightCommand, { type: 'SUBMIT_RESCUE' }>): SubmitResult {
@@ -442,21 +438,7 @@ export function createNightDriver(options: {
   }
 
   function rescueIssueLocal(targetId: string): NightValidationIssue | null {
-    const game = current();
-    const water = game.players.find((player) => player.roleId === 'water');
-    if (water === undefined || water.life === 'dead') {
-      return { code: 'water_unavailable', message: '水妖不存在或已死亡' };
-    }
-    if (water.abilities.waterRescueUsed) {
-      return { code: 'rescue_used', message: '还魂曲整局限一次，已经使用' };
-    }
-    if (targetId === water.playerId) {
-      return { code: 'rescue_self_forbidden', message: '还魂曲不能救自己' };
-    }
-    if (game.night === null || !game.night.dyingSet.includes(targetId)) {
-      return { code: 'target_not_dying', message: '目标不在本夜濒死名单内' };
-    }
-    return null;
+    return rescueSelectionIssue(current(), targetId);
   }
 
   function submitRevive(command: Extract<NightCommand, { type: 'SUBMIT_REVIVE' }>): SubmitResult {
