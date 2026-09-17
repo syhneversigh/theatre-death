@@ -1,0 +1,32 @@
+import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+const selection = new Set();
+const mappings = [
+  [/^engine\/(day|morning|stage|victory|types)\.ts$/, ['engine-day', 'engine-morning', 'day-driver', 'v2-handover', 'v2-victory', 'v2-first-election', 'v2-timers', 'knowledge']],
+  [/^engine\/(night|proposal|targets)\.ts$/, ['engine-night', 'engine-proposal', 'night-driver', 'targets', 'v2-proposal', 'v2-first-election']],
+  [/^engine\/(setup|random|events|emit|index)\.ts$/, ['engine-setup', 'engine-info', 'visibility']],
+  [/^rulesets\//, ['rulesets', 'engine-setup', 'v2-proposal', 'v2-first-election', 'v2-timers']],
+  [/^visibility\//, ['visibility', 'knowledge', 'review', 'v2-spectators-api']],
+  [/^server\/(clock|queued-clock|windows|commands|day-driver|night-driver)\.ts$/, ['day-driver', 'night-driver', 'window-instances', 'deadline-queue', 'v2-api', 'v2-timers']],
+  [/^server\/(rooms|realtime|app|session|log-store|index|health|capabilities|receipts)\.ts$/, ['server-api', 'realtime', 'spectator', 'capabilities', 'receipts', 'v2-api', 'v2-maintenance']],
+  [/^server\/v2\/(account-store|auth|passwords|errors|admin)\.ts$/, ['account-store', 'auth-v2', 'auth-race', 'passwords', 'v2-api']],
+  [/^server\/v2\/(access|spectators|second-screen|view|realtime)\.ts$/, ['access-v2', 'knowledge', 'v2-realtime', 'v2-spectators-api', 'v2-api']],
+  [/^server\/v2\/(config|maintenance|diagnostics|media|rate-limit)\.ts$/, ['v2-config', 'v2-maintenance', 'v2-media', 'voice-livekit']],
+  [/^server\/v2\/(app|index|parse-command)\.ts$/, ['auth-v2', 'v2-api', 'v2-spectators-api', 'v2-media', 'v2-maintenance']],
+  [/^voice\//, ['voice-policy', 'voice-api', 'voice-livekit', 'v2-media']],
+  [/^(deploy\/|scripts\/|\.github\/|package.*json$|tsconfig.json$|vitest.config.ts$)/, ['smoke']],
+];
+for (const path of process.argv.slice(2)) {
+  if (/\.(md|txt)$/.test(path) || path.startsWith('docs/') || path.startsWith('e2e/') || path.startsWith('web/') || path.startsWith('.')) continue;
+  if (/^tests\/.+\.test\.ts$/.test(path)) { if (existsSync(path)) selection.add(path); continue; }
+  if (/^tests\//.test(path)) throw new Error('Shared test helpers changed: explicitly select the affected suites for review.');
+  const match = mappings.find(([pattern]) => pattern.test(path));
+  if (!match) throw new Error(`No incremental mapping for ${path}; add a reviewed mapping.`);
+  for (const name of match[1]) selection.add(`tests/${name}.test.ts`);
+}
+if (!selection.size) { console.log('No backend runtime change; no tests selected.'); process.exit(0); }
+console.log(JSON.stringify({ selected: [...selection] }));
+let result = spawnSync('node', ['scripts/test-incremental.mjs', ...selection], { stdio: 'inherit' });
+if (result.status !== 0) process.exit(result.status ?? 1);
+result = spawnSync('node_modules/.bin/tsc', ['--noEmit'], { stdio: 'inherit' });
+process.exit(result.status ?? 1);

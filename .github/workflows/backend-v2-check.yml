@@ -1,0 +1,20 @@
+name: backend-v2-incremental
+on:
+  pull_request:
+    branches: [main, backend/v2]
+permissions:
+  contents: read
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run reviewed affected test suites inside Docker
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD)
+          docker compose -f deploy/compose.v2.yml run --rm --no-deps test node scripts/select-tests.mjs "${changed[@]}"

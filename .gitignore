@@ -4,6 +4,7 @@ coverage/
 data/
 data-v2/
 data-v2-test/
+data-v2-load/
 test-results-v2/
 .env.v2
 .env

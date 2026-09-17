@@ -1,0 +1,23 @@
+services:
+  load-app:
+    extends:
+      file: compose.v2.yml
+      service: app
+    profiles: ["load"]
+    ports: !override ["127.0.0.1:3002:3000"]
+    environment:
+      PUBLIC_BASE_URL: http://localhost:3002
+    volumes:
+      - ../data-v2-load:/app/data-v2
+  load-client:
+    extends:
+      file: compose.v2.yml
+      service: test
+    profiles: ["load"]
+    environment:
+      BASE_URL: http://load-app:3000
+      DATA_DIR: /app/data-v2
+    volumes:
+      - ../data-v2-load:/app/data-v2
+      - ../test-results-v2:/app/test-results-v2
+    command: ["node", "scripts/v2-capacity.mjs"]

@@ -1,0 +1,17 @@
+# Dependency artifact from the baseline release; changing the lockfile requires refreshing this digest.
+FROM ghcr.io/azhen073/theater-death@sha256:d4ef39c208b61fc89e6885cba8cbf35437e06b839cc9aefc63f6cd76b49f7c93
+WORKDIR /app
+COPY package-lock.json /tmp/v2-lock.json
+RUN node -e "const fs=require('fs');if(JSON.stringify(JSON.parse(fs.readFileSync('/tmp/v2-lock.json')))!==JSON.stringify(JSON.parse(fs.readFileSync('package-lock.json'))))throw Error('Refresh dependency image for changed lockfile')"
+COPY package.json tsconfig.json vitest.config.ts ./
+COPY engine/ ./engine/
+COPY rulesets/ ./rulesets/
+COPY visibility/ ./visibility/
+COPY voice/ ./voice/
+COPY server/ ./server/
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+COPY docs/ ./docs/
+# One complete unit/API gate at candidate build time, not at each development commit.
+RUN npm run typecheck && NODE_ENV=test npm test -- --maxWorkers=2
+CMD ["node", "server/v2/index.ts"]
