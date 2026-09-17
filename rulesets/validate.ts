@@ -105,6 +105,7 @@ export function validateRuleset(input: unknown): ValidationResult {
         add('invalid_timer', `时限 "${key}" 必须为正数，收到 ${String(timers[key])}`);
       }
     }
+    for (const key of ['speechPrepare', 'speechOrder']) if (timers[key] !== undefined && !isPositiveNumber(timers[key])) add('invalid_timer', `时限 ${key} 必须为正数`);
   }
 
   const sheriff = input.sheriff;

@@ -156,6 +156,7 @@ export interface PacedQueue {
 }
 
 export interface DayContext {
+  readonly speechPreparing?: boolean;
   readonly dayNumber: number;
   readonly step: DayStep;
   readonly lastWordsScope: 'first_night' | 'elimination' | null;

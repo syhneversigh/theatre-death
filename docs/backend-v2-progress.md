@@ -15,5 +15,6 @@
 | 09 天理移交 | 完成 | Luna：先复现2失败/1通过，修复后v2-handover3通过（含非法目标/超时），engine-day23+day-driver9通过；旧错误“夜死末尾移交”断言按R46校正 |
 | 10 立即终局 | 完成 | Luna：v2-victory5 + engine-day23 + engine-morning16；typecheck通过 |
 | 11 首日竞选 | 完成 | Luna：v2-first-election5 + engine-day23 + day-driver9 + knowledge8；typecheck通过 |
+| 12 计时调整 | 完成 | Luna：v2-timers4 + first-election5 + victory5 + day-driver9 + voice-policy9 + capabilities5；typecheck通过 |
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。

@@ -28,6 +28,8 @@ export type EliminationGroup = 'deity' | 'civilian' | 'researcher' | 'none';
 export type RulesetMode = 'formal' | 'experimental';
 
 export interface TimersSeconds {
+  readonly speechPrepare?: number;
+  readonly speechOrder?: number;
   readonly faction: number;
   readonly ability: number;
   readonly vote: number;

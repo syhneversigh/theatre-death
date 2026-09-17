@@ -39,6 +39,7 @@ import { windowIssue } from './windows.ts';
 import { resolveMorning } from '../engine/morning.ts';
 
 export type DayWindowId =
+  | 'speech_prepare'
   | 'last_words'
   | 'election_signup'
   | 'election_speech'
@@ -78,6 +79,7 @@ export function createDayDriver(options: {
   let phase: Phase = 'idle';
   let closesAt = 0;
   let generation = 0;
+  let preparedKind: 'election_speech' | 'speech_round' | null = null;
   function liveWindows(): LiveWindow[] {
     if (!state || phase === 'idle' || phase === 'done') return [];
     return [{ id: phase, closesAt, ...(options.strictWindows ? { type: phase, instanceId: `${state.gameId}:day:${state.dayNumber}:${generation}` } : {}) }];
@@ -144,6 +146,24 @@ export function createDayDriver(options: {
     ).length;
   }
 
+  function beginPreparedSpeech(): void {
+    if (phase !== 'speech_prepare' || preparedKind === null) return;
+    const kind = preparedKind;
+    preparedKind = null;
+    step({ state: { ...current(), day: { ...day(), speechPreparing: false } }, events: [] });
+    scheduleWindow(kind, timers().speech, kind === 'election_speech' ? advanceElection : timeoutSpeech);
+  }
+
+  function openSpeech(kind: 'election_speech' | 'speech_round'): void {
+    if (current().ruleset.version !== '2.0') {
+      scheduleWindow(kind, timers().speech, kind === 'election_speech' ? advanceElection : timeoutSpeech);
+      return;
+    }
+    preparedKind = kind;
+    step({ state: { ...current(), day: { ...day(), speechPreparing: true } }, events: [] });
+    scheduleWindow('speech_prepare', timers().speechPrepare ?? 15, beginPreparedSpeech);
+  }
+
   function openNext(): void {
     if (current().win !== null || current().phase === 'ended') {
       for (const handle of handles.splice(0)) clock.cancel(handle);
@@ -197,9 +217,7 @@ export function createDayDriver(options: {
       return;
     }
     if (election.phase === 'speech') {
-      scheduleWindow('election_speech', timers().speech, () => {
-        advanceElection();
-      });
+      openSpeech('election_speech');
       return;
     }
     if (election.phase === 'vote' || election.phase === 'revote') {
@@ -216,7 +234,7 @@ export function createDayDriver(options: {
 
   function openSpeechRoundWindow(context: DayContext): void {
     if (context.speechRound === null) {
-      scheduleWindow('speech_order', timers().ability, () => {
+      scheduleWindow('speech_order', timers().speechOrder ?? timers().ability, () => {
         if (phase !== 'speech_order') {
           return;
         }
@@ -224,9 +242,7 @@ export function createDayDriver(options: {
       });
       return;
     }
-    scheduleWindow('speech_round', timers().speech, () => {
-      timeoutSpeech();
-    });
+    openSpeech('speech_round');
   }
 
   function openVoteWindow(context: DayContext): void {
@@ -322,6 +338,14 @@ export function createDayDriver(options: {
       return rejected('day_finished', '白天流程已结束');
     }
     switch (command.type) {
+      case 'START_SPEECH': {
+        const issue = requireWindow('speech_prepare', '准备时间已截止');
+        if (issue) return issue;
+        const speaker = preparedKind === 'election_speech' ? currentElectionSpeaker(current()) : currentSpeechRoundSpeaker(current());
+        if (speaker !== command.playerId) return rejected('not_current_speaker', '只有当前发言者可开始');
+        beginPreparedSpeech();
+        return accepted();
+      }
       case 'END_LAST_WORDS':
         return submitEndLastWords(command.playerId);
       case 'REGISTER_CANDIDACY':
@@ -375,7 +399,7 @@ export function createDayDriver(options: {
 
   function submitWithdrawCandidacy(playerId: string): SubmitResult {
     const game = current();
-    if (phase !== 'election_signup' && phase !== 'election_speech') {
+    if (phase !== 'election_signup' && phase !== 'election_speech' && !(phase === 'speech_prepare' && preparedKind === 'election_speech')) {
       return rejected('window_not_open', '当前不在竞选报名或发言窗口');
     }
     if (clock.now() >= closesAt) return rejected('window_closed', '竞选窗口已截止');
@@ -383,7 +407,8 @@ export function createDayDriver(options: {
     if (issue !== null) {
       return rejectedIssue(issue);
     }
-    const wasSpeaker = phase === 'election_speech' && currentElectionSpeaker(game) === playerId;
+    const speaking = phase === 'election_speech' || (phase === 'speech_prepare' && preparedKind === 'election_speech');
+    const wasSpeaker = speaking && currentElectionSpeaker(game) === playerId;
     const withdrawal = withdrawCandidacy(game, playerId);
     const after = withdrawal.state;
     const election = after.day?.election;
@@ -392,7 +417,7 @@ export function createDayDriver(options: {
         ? 0
         : election.speechOrder.filter((candidateId) => !election.withdrawn.includes(candidateId))
             .length;
-    if (phase === 'election_speech' && (wasSpeaker || remaining === 0)) {
+    if (speaking && (wasSpeaker || remaining === 0)) {
       apply(advanceElectionSpeech(after));
       return accepted();
     }

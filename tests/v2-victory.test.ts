@@ -106,7 +106,7 @@ describe('v2 放逐立即终局（规则 2.0）', () => {
     const driver = createDayDriver({ clock, onStep: () => undefined });
     const initial = v2Morning(['p_11', 'p_12']);
     driver.start(initial);
-    for (let guard = 0; driver.snapshot()?.day?.step !== 'vote' && guard < 20; guard += 1) {
+    for (let guard = 0; driver.snapshot()?.day?.step !== 'vote' && guard < 50; guard += 1) {
       clock.advance(60_000);
     }
     expect(driver.snapshot()?.day?.step).toBe('vote');

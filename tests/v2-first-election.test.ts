@@ -61,7 +61,7 @@ describe('v2 首日预公告竞选', () => {
     expect(driver.snapshot()?.day?.step).toBe('election');
     expect(driver.submit({ type: 'REGISTER_CANDIDACY', playerId: 'p_6' }).accepted).toBe(true);
     clock.advance(30_000);
-    clock.advance(60_000);
+    clock.advance(135_000);
     expect(driver.snapshot()?.day?.election?.phase).toBe('vote');
 
     for (const voterId of eligibleIds(firstNight.state)) {
@@ -96,7 +96,7 @@ describe('v2 首日预公告竞选', () => {
     expect(driver.submit({ type: 'REGISTER_CANDIDACY', playerId: 'p_6' }).accepted).toBe(true);
     expect(driver.submit({ type: 'REGISTER_CANDIDACY', playerId: 'p_7' }).accepted).toBe(true);
     clock.advance(30_000);
-    clock.advance(120_000);
+    clock.advance(270_000);
     expect(driver.snapshot()?.day?.election?.phase).toBe('vote');
 
     const voters = eligibleIds(firstNight.state);

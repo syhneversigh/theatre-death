@@ -17,6 +17,7 @@ import type { GameState } from '../engine/types.ts';
  * - game_not_started / game_ended：流程外
  */
 export type VoicePermissionReason =
+  | 'preparing_speech'
   | 'speaker'
   | 'dead_listener'
   | 'night_silence'
@@ -63,6 +64,7 @@ export function voicePermission(state: GameState, playerId: string): VoicePermis
     return denied('game_not_started');
   }
   const day = state.day;
+  if (day?.speechPreparing) return denied('preparing_speech');
   if (day === null) {
     return denied('game_not_started');
   }

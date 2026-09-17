@@ -36,7 +36,8 @@ export function capabilities(state: GameState, playerId: string | null, windows:
   allow('SUBMIT_REVIVE', open.has('revive') && state.phase === 'morning' && state.nightStage === 2 && me.roleId === 'water' && me.life === 'dead' && (state.night?.deaths.includes(me.playerId) ?? false));
   if (state.phase === 'day') {
     allow('REGISTER_CANDIDACY', open.has('election_signup') && day.registerCandidacyIssue(state, me.playerId) === null);
-    allow('WITHDRAW_CANDIDACY', (open.has('election_signup') || open.has('election_speech')) && day.withdrawCandidacyIssue(state, me.playerId) === null);
+    allow('WITHDRAW_CANDIDACY', (open.has('election_signup') || open.has('election_speech') || open.has('speech_prepare')) && day.withdrawCandidacyIssue(state, me.playerId) === null);
+    allow('START_SPEECH', open.has('speech_prepare') && (state.day?.step === 'election' ? day.currentElectionSpeaker(state) : day.currentSpeechRoundSpeaker(state)) === me.playerId);
     allow('END_ELECTION_SPEECH', open.has('election_speech') && day.currentElectionSpeaker(state) === me.playerId);
     allow('END_SPEECH', open.has('speech_round') && day.currentSpeechRoundSpeaker(state) === me.playerId);
     allow('END_LAST_WORDS', open.has('last_words') && day.endLastWordsIssue(state, me.playerId) === null);
