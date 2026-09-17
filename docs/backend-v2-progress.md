@@ -23,7 +23,8 @@
 | 17 公开观战 | 完成 | Luna：v2-spectators-api3 + v2-api5；typecheck通过 |
 | 18 私人第二屏 | 完成 | Luna：v2-spectators-api5 + access-v2 6；真实Socket撤销验证；typecheck通过 |
 | 19 配置与运行保障 | 增量验证通过 | config5；maintenance4 + media6 + voice-livekit7；API6+knowledge8+auth5；auth-race1；原生Node24导入/SQLite初始化、typecheck通过 |
+| 20 候选与容量 | 完成 | 候选源码e44d12cc505f：构建内typecheck、40文件310用例全通过；5分钟加强容量复验50连接保持、5988请求P95 124.25ms、RSS峰值174.35MiB、loopP99 82.97ms、全部错误指标0 |
 
-19额外发现：Vitest转换会容忍Node原生type stripping不支持的参数属性；已改显式字段，并启用erasableSyntaxOnly防回归。3001开发容器实际启动健康检查通过，3000旧服务仍正常。容量和候选构建尚未完成。
+19额外发现：Vitest转换会容忍Node原生type stripping不支持的参数属性；已改显式字段，并启用erasableSyntaxOnly防回归。3001已使用固定候选镜像，仅挂载data-v2；3000旧服务仍正常。候选摘要、部署与全部验收边界见backend-v2-acceptance.md。UI全量E2E、真实语音及公网联调未运行；无远端推送或发布。
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。

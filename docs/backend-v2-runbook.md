@@ -20,7 +20,7 @@ docker compose -f deploy/compose.v2.yml --profile app up -d app
 docker build -f deploy/Dockerfile.v2 -t theater-death-v2:<源码提交SHA> .
 ```
 
-只在候选构建执行一次全量单元/API门禁。构建后记录本地image ID；本地构建未推送注册表时没有RepoDigest，不能伪造远端摘要。
+只在候选构建执行一次全量单元/API门禁。构建后记录本地image ID和Docker实际返回的摘要。containerd镜像存储可能为本地构建记录RepoDigest；这不代表镜像已经上传注册表，不能将本地摘要冒充远端发布记录。
 
 把本地已验证标签写入不入库的 `.env.v2` 中的 `V2_IMAGE`，其余配置参考 `.env.v2.example`。先停止占用3001的开发app，再启动候选：
 
