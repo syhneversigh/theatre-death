@@ -113,6 +113,8 @@ describe('publishedState 公开知识投影', () => {
     expect(player.public.seats?.find((seat) => seat.seat === 2)?.alive).toBe(true);
     expect(player.public.seats?.find((seat) => seat.seat === 1)?.revealedRoleId).toBeNull();
     expect(player.private?.events?.map((item) => item.type)).not.toContain('revive_selected');
+    const factionRoom = player.private?.factionRoom;
+    expect(factionRoom === null || factionRoom === undefined || !('historyFromSeq' in factionRoom)).toBe(true);
     expect(player.private?.targets).toEqual({});
     expect(player.private?.proposal).toBeNull();
     expect(spectator.public.seats?.find((seat) => seat.seat === 6)?.alive).toBe(true);

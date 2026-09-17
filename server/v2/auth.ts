@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { AccountStore, type AccountSession } from './account-store.ts';
+import { AccountStore, type AccountSession, type Account } from './account-store.ts';
 import { ApiError } from './errors.ts';
 import { hashPassword, validatePassword, verifyPassword } from './passwords.ts';
 import { RateLimits } from './rate-limit.ts';
@@ -22,9 +22,12 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
   const router = Router();
   const limits = new RateLimits(store.now);
   const cookieOptions = { httpOnly: true, secure, sameSite: 'strict' as const, path: '/api/v2', maxAge: 7 * 86400_000 };
-  const loginResponse = (res: Response, userId: string) => {
-    const { token, session } = store.createSession(userId);
-    res.cookie(COOKIE, token, cookieOptions).json({ userId, expiresAt: session.expiresAt });
+  const loginResponse = (res: Response, account: Account) => {
+    const { token, session } = store.transaction(() => {
+      if (store.byName(account.username)?.passwordHash !== account.passwordHash) throw new ApiError(401, 'invalid_credentials');
+      return store.createSession(account.id);
+    });
+    res.cookie(COOKIE, token, cookieOptions).json({ userId: account.id, expiresAt: session.expiresAt });
   };
   router.post('/register', async (req, res) => {
     if (!limits.allow(`register:${req.ip}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
@@ -33,7 +36,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     const password = req.body?.password; validatePassword(password);
     if (!store.validInvite(invitation, 'register')) throw new ApiError(403, 'invalid_invitation');
     const account = store.register(username, await hashPassword(password), invitation);
-    res.status(201); loginResponse(res, account.id);
+    res.status(201); loginResponse(res, account);
   });
   router.post('/login', async (req, res) => {
     const username = textField(req.body?.username, 'username', 3, 32).toLowerCase();
@@ -41,7 +44,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     if (!limits.allow(`login-ip:${req.ip}`, 30, 60_000) || !limits.allow(`login-user:${username}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
     const account = store.byName(username);
     if (!await verifyPassword(password, account?.passwordHash ?? null) || !account) throw new ApiError(401, 'invalid_credentials');
-    loginResponse(res, account.id);
+    loginResponse(res, account);
   });
   router.get('/me', (req, res) => {
     const session = requireAccount(store, req);

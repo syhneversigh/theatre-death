@@ -117,4 +117,27 @@ describe('v2 account authentication routes', () => {
     expect(responses[10]?.status).toBe(429);
     expect(await body(responses[10]!)).toEqual({ error: 'rate_limited' });
   }, 30_000);
+
+  it('rejects expired sessions and change-password revokes the old session', async () => {
+    const now = { value: 10_000 };
+    const store = new AccountStore(':memory:', () => now.value);
+    stores.push(store);
+    const account = store.register('change_user', await hashPassword('initial password value'), store.invite().token);
+    const session = store.createSession(account.id);
+    const cookie = `${COOKIE}=${session.token}`;
+    const revoked: string[] = [];
+    const app = appFor(store, revoked);
+    expect((await request(app, '/me', { headers: { cookie } })).status).toBe(200);
+    now.value += 7 * 86400_000;
+    expect((await request(app, '/me', { headers: { cookie } })).status).toBe(401);
+
+    const fresh = store.createSession(account.id);
+    const freshCookie = `${COOKIE}=${fresh.token}`;
+    const changed = await request(app, '/change-password', json({ currentPassword: 'initial password value', password: 'updated password value' }, freshCookie));
+    expect(changed.status).toBe(200);
+    expect(revoked).toEqual([account.id]);
+    expect(store.session(fresh.token)).toBeNull();
+    const login = await request(app, '/login', json({ username: 'change_user', password: 'updated password value' }));
+    expect(login.status).toBe(200);
+  }, 20_000);
 });
