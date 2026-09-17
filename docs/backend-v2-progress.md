@@ -8,5 +8,6 @@
 | 02 权限查询 | 完成 | Luna：capabilities 5 + voice-policy 9；typecheck通过 |
 | 03 合法目标 | 完成 | Luna：targets 5 + night-driver 14 + engine-night 27；typecheck通过。纠正不可达的连续同对测试历史后仅重跑targets |
 | 04 公开投影 | 完成 | Luna：knowledge及gameView 8/8；typecheck通过；未公告生命/翻牌隔离及水妖专属回归窗口 |
+| 05 实时通道 | 完成 | Luna：v2-realtime 5 + realtime 6；typecheck通过；撤销断开、公开/私人视角、跨来源拒绝 |
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。
