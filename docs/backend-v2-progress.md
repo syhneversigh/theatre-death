@@ -7,5 +7,6 @@
 | 01 工程基线 | 完成 | Luna：engine目录宿主/容器哈希一致；smoke 1/1；compose app继承挂载且独立端口 |
 | 02 权限查询 | 完成 | Luna：capabilities 5 + voice-policy 9；typecheck通过 |
 | 03 合法目标 | 完成 | Luna：targets 5 + night-driver 14 + engine-night 27；typecheck通过。纠正不可达的连续同对测试历史后仅重跑targets |
+| 04 公开投影 | 完成 | Luna：knowledge及gameView 8/8；typecheck通过；未公告生命/翻牌隔离及水妖专属回归窗口 |
 
 旧 3000 服务和数据未改动。测试命令为 compose.v2.yml run --rm --no-deps test；Windows换行差异按解析后的JSON锁文件比较。
