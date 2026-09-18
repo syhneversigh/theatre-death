@@ -10,6 +10,9 @@
     "typecheck": "tsc --noEmit",
     "typecheck:web": "tsc --noEmit -p web",
     "build:web": "vite build",
+    "dev:web:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
+    "typecheck:web:v2": "tsc --noEmit -p web-v2",
+    "build:web:v2": "vite build --config vite.v2.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node server/index.ts"

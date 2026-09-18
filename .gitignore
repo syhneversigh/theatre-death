@@ -11,3 +11,5 @@ test-results-v2/
 .env
 e2e-results/
 e2e/results/
+data-frontend-v2/
+test-results-frontend-v2/

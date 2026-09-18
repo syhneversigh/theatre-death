@@ -14,3 +14,6 @@ test-results-v2/
 !docs/**/*.md
 e2e-results
 e2e/results
+data-frontend-v2/
+test-results-frontend-v2/
+web-v2/dist/
