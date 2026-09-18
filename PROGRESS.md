@@ -1,5 +1,7 @@
 # theater_death 进度与交接
 
+当前正在实施前端契约 2.1。优先读 `docs/client-contract-2.1-progress.md` 和 `docs/client-contract-2.1-plan.md`；下面的 v2.0 候选结果是本次工作的基线。
+
 ## 本地 backend/v2 迭代（2026-09-18）
 
 用户已批准并实施新版后端计划。以本分支的 `docs/backend-v2-progress.md`、`docs/backend-v2-plan.md`、`docs/backend-v2-api.md` 为当前接续入口；下文为上游1.x历史，不可把其遗留部署动作直接套用到v2。旧3000服务仍运行固定cc3e48e镜像；新版独立3001/data-v2，仅本地提交、不推送、不切换旧入口。当前候选验收结果以v2进度文件为准。

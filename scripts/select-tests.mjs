@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 const selection = new Set();
 const mappings = [
+  [/^contracts\//, ['contract-foundation']],
   [/^engine\/(day|morning|stage|victory|types)\.ts$/, ['engine-day', 'engine-morning', 'day-driver', 'v2-handover', 'v2-victory', 'v2-first-election', 'v2-timers', 'knowledge']],
   [/^engine\/(night|proposal|targets)\.ts$/, ['engine-night', 'engine-proposal', 'night-driver', 'targets', 'v2-proposal', 'v2-first-election']],
   [/^engine\/(setup|random|events|emit|index)\.ts$/, ['engine-setup', 'engine-info', 'visibility']],

@@ -5,6 +5,7 @@ data/
 data-v2/
 data-v2-test/
 data-v2-load/
+data-contract-2.1/
 test-results-v2/
 .env.v2
 .env

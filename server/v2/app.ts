@@ -22,7 +22,7 @@ import { V2Media } from './media.ts';
 import { createMaintenance } from './maintenance.ts';
 import { createDiagnostics } from './diagnostics.ts';
 
-export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; secureCookies?: boolean; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
+export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; secureCookies?: boolean; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
 export function createV2App(deps: V2Deps) {
   const { accounts, clock } = deps;
   const access = new Map<string, RoomAccess>();
@@ -31,7 +31,7 @@ export function createV2App(deps: V2Deps) {
   const media = new V2Media(deps.voice ?? null, () => clock.now());
   const diagnostics = createDiagnostics();
   const resolve = (cookie: string, gameId: string) => {
-    const session = accountSession(accounts, cookie);
+    const session = accountSession(accounts, cookie, deps.cookieName);
     return session ? access.get(gameId)?.resolve(session) ?? null : null;
   };
   const hub = createV2Realtime(resolve, () => clock.now(), deps.origin);
@@ -69,12 +69,12 @@ export function createV2App(deps: V2Deps) {
       void meta.room.enqueue(() => { meta.expireSessions(); refresh(meta.room.gameId); });
     }
   };
-  app.use('/api/v2/auth', authRouter(accounts, deps.secureCookies ?? false, revokeUser));
+  app.use('/api/v2/auth', authRouter(accounts, deps.secureCookies ?? false, revokeUser, deps.cookieName));
   app.get('/healthz', (_req, res) => res.json({ status: 'ok', apiVersion: 2, rulesVersion: '2.0' }));
   app.get('/', (_req, res) => res.json({ service: 'theater-death-v2', api: '/api/v2', ui: 'not-included' }));
   const router = express.Router();
-  router.use((req, _res, next) => { try { requireAccount(accounts, req); next(); } catch (error) { next(error); } });
-  const session = (req: Request) => requireAccount(accounts, req);
+  router.use((req, _res, next) => { try { requireAccount(accounts, req, deps.cookieName); next(); } catch (error) { next(error); } });
+  const session = (req: Request) => requireAccount(accounts, req, deps.cookieName);
   const limited = (req: Request, category: string, burst: number, period: number) => {
     const s = session(req);
     if (!limits.allow(`${category}:${s.userId}`, burst, period) || !limits.allow(`${category}:ip:${req.ip}`, burst * 5, period)) throw new ApiError(429, 'rate_limited');
@@ -218,8 +218,8 @@ export function createV2App(deps: V2Deps) {
   router.post('/rooms/:code/voice/token', async (req, res) => { limited(req, 'voice', 6, 3000); const { meta, s } = view(req); res.json(await media.issue(meta, s)); });
   router.post('/rooms/:code/voice/sync', async (req, res) => { limited(req, 'voice', 6, 3000); const { meta } = view(req); if (!deps.voice) throw new ApiError(409, 'voice_disabled'); await media.sync(meta); res.json({ synced: true }); });
   router.get('/diagnostics', (_req, res) => res.json({ ...diagnostics.snapshot(), rooms: access.size }));
-  router.use(publicSpectatorRouter({ accounts, clock, registry, access, refresh }));
-  router.use(secondScreenRouter({ accounts, clock, registry, access, refresh }));
+  router.use(publicSpectatorRouter({ accounts, clock, registry, access, refresh, cookieName: deps.cookieName }));
+  router.use(secondScreenRouter({ accounts, clock, registry, access, refresh, cookieName: deps.cookieName }));
   app.use('/api/v2', router);
   app.use((_req, res) => res.status(404).json({ error: { code: 'not_found' } }));
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {

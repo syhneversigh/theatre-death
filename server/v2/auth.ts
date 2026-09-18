@@ -5,12 +5,12 @@ import { hashPassword, validatePassword, verifyPassword } from './passwords.ts';
 import { RateLimits } from './rate-limit.ts';
 
 export const COOKIE = 'td_account_v2';
-export function accountSession(store: AccountStore, cookie: string): AccountSession | null {
-  const raw = cookie.split(';').map((p) => p.trim()).find((p) => p.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
+export function accountSession(store: AccountStore, cookie: string, cookieName = COOKIE): AccountSession | null {
+  const raw = cookie.split(';').map((p) => p.trim()).find((p) => p.startsWith(`${cookieName}=`))?.slice(cookieName.length + 1);
   return raw ? store.session(raw) : null;
 }
-export function requireAccount(store: AccountStore, req: Request): AccountSession {
-  const session = accountSession(store, req.headers.cookie ?? '');
+export function requireAccount(store: AccountStore, req: Request, cookieName = COOKIE): AccountSession {
+  const session = accountSession(store, req.headers.cookie ?? '', cookieName);
   if (!session) throw new ApiError(401, 'unauthorized');
   return session;
 }
@@ -18,7 +18,7 @@ export function textField(value: unknown, name: string, min = 1, max = 128): str
   if (typeof value !== 'string' || value.length < min || value.length > max) throw new ApiError(400, `invalid_${name}`);
   return value;
 }
-export function authRouter(store: AccountStore, secure: boolean, onRevoked: (userId: string) => void) {
+export function authRouter(store: AccountStore, secure: boolean, onRevoked: (userId: string) => void, cookieName = COOKIE) {
   const router = Router();
   const limits = new RateLimits(store.now);
   const cookieOptions = { httpOnly: true, secure, sameSite: 'strict' as const, path: '/api/v2', maxAge: 7 * 86400_000 };
@@ -27,7 +27,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
       if (store.byName(account.username)?.passwordHash !== account.passwordHash) throw new ApiError(401, 'invalid_credentials');
       return store.createSession(account.id);
     });
-    res.cookie(COOKIE, token, cookieOptions).json({ userId: account.id, expiresAt: session.expiresAt });
+    res.cookie(cookieName, token, cookieOptions).json({ userId: account.id, expiresAt: session.expiresAt });
   };
   router.post('/register', async (req, res) => {
     if (!limits.allow(`register:${req.ip}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
@@ -47,13 +47,13 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     loginResponse(res, account);
   });
   router.get('/me', (req, res) => {
-    const session = requireAccount(store, req);
+    const session = requireAccount(store, req, cookieName);
     res.json({ userId: session.userId, expiresAt: session.expiresAt });
   });
   router.post('/logout', (req, res) => {
-    const session = requireAccount(store, req);
+    const session = requireAccount(store, req, cookieName);
     store.logout(session.id); onRevoked(session.userId);
-    res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined }).json({ loggedOut: true });
+    res.clearCookie(cookieName, { ...cookieOptions, maxAge: undefined }).json({ loggedOut: true });
   });
   router.post('/reset-password', async (req, res) => {
     if (!limits.allow(`reset:${req.ip}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
@@ -64,7 +64,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     res.json({ reset: true });
   });
   router.post('/change-password', async (req, res) => {
-    const session = requireAccount(store, req);
+    const session = requireAccount(store, req, cookieName);
     if (!limits.allow(`password:${session.userId}`, 5, 60_000)) throw new ApiError(429, 'rate_limited');
     const oldPassword = textField(req.body?.currentPassword, 'current_password');
     const password = req.body?.password; validatePassword(password);
@@ -72,9 +72,9 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     if (!row || !await verifyPassword(oldPassword, String(row.password_hash))) throw new ApiError(401, 'invalid_credentials');
     const hash = await hashPassword(password);
     // An async password calculation must not revive a concurrently revoked session.
-    requireAccount(store, req);
+    requireAccount(store, req, cookieName);
     store.changePassword(session.userId, hash); onRevoked(session.userId);
-    res.clearCookie(COOKIE, { ...cookieOptions, maxAge: undefined }).json({ changed: true });
+    res.clearCookie(cookieName, { ...cookieOptions, maxAge: undefined }).json({ changed: true });
   });
   return router;
 }

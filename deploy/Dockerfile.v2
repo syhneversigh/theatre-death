@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package-lock.json /tmp/v2-lock.json
 RUN node -e "const fs=require('fs');if(JSON.stringify(JSON.parse(fs.readFileSync('/tmp/v2-lock.json')))!==JSON.stringify(JSON.parse(fs.readFileSync('package-lock.json'))))throw Error('Refresh dependency image for changed lockfile')"
 COPY package.json tsconfig.json vitest.config.ts ./
+COPY contracts/ ./contracts/
 COPY engine/ ./engine/
 COPY rulesets/ ./rulesets/
 COPY visibility/ ./visibility/

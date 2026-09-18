@@ -1,0 +1,35 @@
+# 前端接入契约 2.1
+
+实施中；当前完成范围见 [进度](client-contract-2.1-progress.md)。本文件随实现更新，候选验收前不应当作已全部可用的服务声明。
+
+## 版本与身份
+
+API 前缀 `/api/v2`，规则版本 `2.0`，契约版本 `2.1`。账户名只读并作为显示名。Cookie 由服务端设置，浏览器不能读取令牌，也不把令牌写入 localStorage。`/auth/me` 查询当前登录身份；登录不自动接管其他设备的房间。
+
+Room 的 roomId 与房间码跨局不变。memberId 表示当前房间成员，显式离开再进入产生新 memberId。gameId/playerId 只属于一局；lobby 时 gameId=null。角色、座位由开局分配。参与过当前局的账号返回只能恢复本人，不能通过公开观战获得其他玩家视角。
+
+进入房间只调用 `POST /rooms/:code/enter`。服务端决定正式/公开观众/恢复/需要显式接管；已有观众不会因为出现空位被自动转正式。使用 `promote` 申请转正式，失败仍是原观众。账号存在另一当前房间时返回 `already_in_room`，应先由用户明确离开。
+
+## 请求结果与重试
+
+房间写操作使用 UUID requestId；同一意图重试复用 ID，不同意图生成新 ID。局内操作还必须携带 gameId，命令再带窗口的 windowInstanceId。身份从 Cookie 获取，不能提交 playerId 冒充操作者。旧 gameId 返回 `stale_game`，旧窗口返回 `stale_window`，超时返回 `window_closed`，同 ID 不同内容返回 `request_id_reused`。
+
+命令结果不明时查询 `GET /rooms/:code/games/:gameId/receipts/:requestId`。`not_seen` 只表示查询执行时尚未看到记录，不能显示“操作失败”；可以原 ID 原载荷重试。`pending` 继续查询；`accepted/rejected` 是已有回执。查询永不重新执行动作，回执保留至当前复盘结束。注册响应丢失应使用用户名密码登录恢复，不盲目重复注册。
+
+聊天使用 clientMessageId，返回与 Socket 快照相同的 messageId。乐观消息以 clientMessageId 关联，messageId 去重；不能把一次 HTTP 超时显示为肯定发送失败。聊天 cursor 只在当前有权读取的 game/channel 内排序，不跨局比较。
+
+## Socket 与同步
+
+Socket.IO 路径 `/api/v2/socket.io`，握手 auth 传 roomId。`view_updated` 发送完整授权快照。每个账号+roomId 的 viewVersion 单调递增，只计其可见内容变化；serverTime 自身变化不增加版本。重连后取完整快照，拒绝同 roomId 的旧版本；gameId 变化时清除旧角色、草稿、窗口、消息和提交状态。
+
+最小 `control` 通知用 reason 区分 kicked、dissolved、taken_over、session_expired、host_changed、review_ended、left、screen_revoked。不可继续使用旧私有视图；接管/踢出/撤销后服务端停止旧授权推送。正常断线显示 reconnecting 最多15秒，心跳超时直接 offline；前端不要自行决定房主或删除离线成员。
+
+windows 是并行窗口数组，不能把 windows[0] 当作全场唯一任务。使用任务给出的 windowInstanceId、允许动作及合法目标；目标重复是否允许按服务端返回配额表达。倒计时以 closesAt-serverTime 与收到快照的本地单调时钟估算；客户端倒计时为0只影响展示，最终由服务端检查截止。
+
+## 开发代理与头像
+
+开发前端使用同源代理转发 `/api/v2`（包括 WebSocket）到后端。浏览器 origin 必须与后端 PUBLIC_BASE_URL 一致；HTTP 带 credentials，Socket 使用 withCredentials。不要开放通配 CORS 绕过配置。开发3003使用独立 cookie `td_account_contract_21`，候选3001使用 `td_account_v2`。端口不同不能隔离 Cookie，因此 cookie 名不能相同。
+
+头像客户端先裁剪正方形，以 JPEG/PNG/WebP 原始二进制 PUT `/me/avatar`，不能包在 JSON/Base64 中。限制由 bootstrap 提供；成功后用响应 profile 替换本地资料。失败保留旧头像。avatarUrl=null 时显示前端静态默认头像。认证 GET 图片通过同源 Cookie 访问；版本化资源 URL 可以缓存，不应自己拼接文件路径。
+
+个人音量、缩放等偏好由前端保存。只有 bootstrap 宣告启用 voice 时展示真实语音能力；当前本地候选语音关闭。准备、房主、可用动作和阻止原因均取自服务端 capabilities，客户端禁用按钮不能替代服务端授权。

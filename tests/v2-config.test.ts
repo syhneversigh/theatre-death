@@ -13,6 +13,14 @@ function env(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
 }
 
 describe('v2 configuration validation', () => {
+  it('defaults the account cookie name and accepts only safe custom names', () => {
+    expect(configuration(env()).cookieName).toBe('td_account_v2');
+    expect(configuration(env({ ACCOUNT_COOKIE_NAME: 'theater_session_2' })).cookieName).toBe('theater_session_2');
+    for (const cookieName of ['', 'has-dash', 'has space', 'a.b', 'x'.repeat(65)]) {
+      expect(() => configuration(env({ ACCOUNT_COOKIE_NAME: cookieName }))).toThrow('Invalid ACCOUNT_COOKIE_NAME');
+    }
+  });
+
   it('生产环境拒绝 HTTP origin，且拒绝带 path 的 origin', () => {
     expect(() => configuration(env({ PUBLIC_BASE_URL: 'http://game.example.test' }))).toThrow(/HTTPS/);
     expect(() => configuration(env({ PUBLIC_BASE_URL: 'https://game.example.test/path' }))).toThrow(/origin/);

@@ -7,17 +7,17 @@ import { requireAccount, textField } from './auth.ts';
 import { ApiError } from './errors.ts';
 import { RateLimits } from './rate-limit.ts';
 
-export interface SpectatorDeps { accounts: AccountStore; clock: Clock; registry: RoomRegistry; access: Map<string, RoomAccess>; refresh: (id: string) => void }
+export interface SpectatorDeps { accounts: AccountStore; clock: Clock; registry: RoomRegistry; access: Map<string, RoomAccess>; refresh: (id: string) => void; cookieName?: string }
 export function spectatorContext(deps: SpectatorDeps) {
   const limits = new RateLimits(() => deps.clock.now());
   const mutate = async <T>(req: Request, operation: (meta: RoomAccess, session: AccountSession) => T) => {
-    const session = requireAccount(deps.accounts, req);
+    const session = requireAccount(deps.accounts, req, deps.cookieName);
     if (!limits.allow(session.userId, 10, 60_000)) throw new ApiError(429, 'rate_limited');
     const room = deps.registry.getByCode(String(req.params.code).toUpperCase());
     const meta = room ? deps.access.get(room.gameId) : null;
     if (!meta) throw new ApiError(404, 'room_not_found');
     return meta.room.enqueue(() => {
-      const current = requireAccount(deps.accounts, req);
+      const current = requireAccount(deps.accounts, req, deps.cookieName);
       const result = operation(meta, current);
       meta.lastConnectedAt = deps.clock.now(); deps.refresh(meta.room.gameId);
       return result;

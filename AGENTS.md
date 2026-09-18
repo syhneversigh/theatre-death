@@ -1,5 +1,11 @@
 # theater_death 项目规则
 
+## 前端契约 2.1 授权（2026-09-18）
+
+- 用户已批准 docs/client-contract-2.1-plan.md。当前工作转入 backend/client-contract-2.1，进度见 docs/client-contract-2.1-progress.md。
+- 新开发环境 3003/独立数据/独立 Cookie，最终验收后只替换 3001 候选；3000 保持。账号迁移保留有效会话；不保留 rc.1 线协议兼容。
+- 延续下面的 Luna 增量测试、小分支本地提交及 Docker 约束。规则仍为 2.0。
+
 ## backend/v2 本地授权增补（2026-09-18）
 
 - 用户已批准 docs/backend-v2-plan.md；新玩法以 docs/rules-v2.md 为准，仅规则2.0生效，1.1保留回归。此前Q已清零不妨碍本次明确批准的新裁定。

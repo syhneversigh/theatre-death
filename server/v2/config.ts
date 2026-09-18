@@ -15,5 +15,7 @@ export function configuration(env: NodeJS.ProcessEnv = process.env) {
     if (production ? protocol !== 'wss:' : !['ws:', 'wss:'].includes(protocol)) throw new Error('Invalid voice WebSocket URL');
     if (production && (/^(devkey|change-me)$/i.test(env.LIVEKIT_API_KEY) || env.LIVEKIT_API_SECRET.length < 32 || /^(devsecret|change-me)/i.test(env.LIVEKIT_API_SECRET))) throw new Error('Refusing development LiveKit credentials');
   }
-  return { production, origin, port, secureCookies: url.protocol === 'https:', dataDir: env.DATA_DIR ?? './data-v2', voiceEnabled };
+  const cookieName = env.ACCOUNT_COOKIE_NAME ?? 'td_account_v2';
+  if (!/^[a-zA-Z0-9_]{1,64}$/.test(cookieName)) throw new Error('Invalid ACCOUNT_COOKIE_NAME');
+  return { production, origin, port, cookieName, secureCookies: url.protocol === 'https:', dataDir: env.DATA_DIR ?? './data-v2', voiceEnabled };
 }
