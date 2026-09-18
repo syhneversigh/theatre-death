@@ -6,7 +6,8 @@
 | --- | --- | --- |
 | 01 契约与隔离基础 | 增量通过 | Luna：contract-foundation + v2-config + smoke，3文件9例；容器typecheck通过；HTTP/Socket自定义Cookie与默认Cookie隔离。未跑全量/E2E。源码只读挂载，基线cbc93c7 |
 | 02 持续房间与单局运行时 | 增量通过 | Luna：stable-room5 + day-driver9 + server-api24；typecheck通过。配置深冻结/观众不占参赛席/共用队列/审计关联与时间；暂未接入2.1 HTTP入口 |
-| 03–13 | 待实施 | 见计划，暂未变更 3000/3001 部署 |
+| 03 进入与成员身份 | 增量通过 | Luna：room-membership5 + stable-room5；typecheck通过。补强无当前房间账号并发进入两房、观众重复进入不自动转正式，单文件复跑5/5；尚未接新HTTP入口 |
+| 04–13 | 待实施 | 见计划，暂未变更 3000/3001 部署 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
