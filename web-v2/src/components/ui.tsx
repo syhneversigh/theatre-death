@@ -29,7 +29,15 @@ export function Notice({ children, error = false }: { children: ReactNode; error
 export function Modal({ title, children, onClose, dismissible = true, context }: { title: string; children: ReactNode; onClose: () => void; dismissible?: boolean; context?: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  useEffect(() => { const dialog = ref.current; dialog?.showModal(); return () => dialog?.close(); }, []);
+  useEffect(() => {
+    const dialog = ref.current;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      if (previousFocus?.isConnected && previousFocus.getClientRects().length && !document.querySelector('dialog[open]')) previousFocus.focus({ preventScroll: true });
+    };
+  }, []);
   return <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (dismissible) onClose(); }}>
     <header className="modal__head"><h2 id={titleId}>{title}</h2><button className="icon-button" type="button" aria-label="关闭" disabled={!dismissible} onClick={onClose}>×</button></header>
     {context}

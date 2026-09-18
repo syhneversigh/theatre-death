@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CatalogDTO } from '../contracts/catalog.ts';
 import type { RoomSnapshot } from '../contracts/v2.ts';
+import { useKeyboardViewport } from '../web-v2/src/state/keyboard-viewport.ts';
+import { useDisplayPreferences } from '../web-v2/src/state/preferences.ts';
 import { GameScene } from '../web-v2/src/features/game/scene.tsx';
 import { Lobby } from '../web-v2/src/features/room/lobby.tsx';
 import { ReviewPage } from '../web-v2/src/features/review/page.tsx';
 import '../web-v2/src/styles/main.css';
+import '../web-v2/src/styles/preferences.css';
 
 export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean }
 const updateEvent = 'v2-game-fixture-update';
@@ -14,6 +17,8 @@ function sceneKey(view: RoomSnapshot): string {
 }
 
 export function GameHarness() {
+  useDisplayPreferences();
+  useKeyboardViewport();
   const [fixture, setFixture] = useState<GameHarnessFixture | null>(null);
   const [terminal, setTerminal] = useState('');
   const sample = useRef<{ server: number; local: number } | null>(null);

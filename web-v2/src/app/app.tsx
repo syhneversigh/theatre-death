@@ -7,10 +7,15 @@ import { acceptProfile } from '../state/snapshot.ts';
 import { ApiFailure, errorMessage, get } from '../transport/http.ts';
 import { navigate } from './navigation.ts';
 import { AuthenticatedShell } from './shell.tsx';
+import { useDisplayPreferences } from '../state/preferences.ts';
+import { useKeyboardViewport } from '../state/keyboard-viewport.ts';
 import '../styles/main.css';
+import '../styles/preferences.css';
 
 type Boot = { bootstrap: BootstrapDTO; catalog: CatalogDTO; profile: AuthMe | null };
 export function App() {
+  useDisplayPreferences();
+  useKeyboardViewport();
   const [boot, setBoot] = useState<Boot | null>(null);
   const [failure, setFailure] = useState('');
   const [attempt, setAttempt] = useState(0);

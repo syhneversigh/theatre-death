@@ -5,6 +5,7 @@ import type { AuthMe, Profile } from '../../../../contracts/v2.ts';
 import { Avatar, Field, Modal, Notice, PageHeading } from '../../components/ui.tsx';
 import { ApiFailure, UnknownResult, errorMessage, get, post } from '../../transport/http.ts';
 import { AvatarEditor } from './avatar-editor.tsx';
+import { DisplaySettings } from './display-settings.tsx';
 
 export function AccountPage({ bootstrap, profile, onProfile, onExpired }: {
   bootstrap: BootstrapDTO; profile: AuthMe; onProfile: (profile: Profile) => void; onExpired: () => void;
@@ -13,6 +14,7 @@ export function AccountPage({ bootstrap, profile, onProfile, onExpired }: {
   return <><PageHeading eyebrow="YOUR IDENTITY" title="你的账户">名字留在剧院，身份留在每一场演出里。</PageHeading>
     <section className="panel account-profile"><Avatar url={profile.avatarUrl} name={profile.username} size="large"/><div><h2>{profile.username}</h2><p className="muted">账号即公开显示名，创建后不可修改。</p>{bootstrap.features.avatars && <button className="button" onClick={() => setModal('avatar')}>更换头像</button>}</div></section>
     <section className="panel"><h2>账户安全</h2><div className="setting-row"><div><strong>登录密码</strong><p className="muted">修改后所有设备需重新登录。</p></div><button className="button" onClick={() => setModal('password')}>修改密码</button></div></section>
+    <DisplaySettings/>
     {modal === 'avatar' && <AvatarEditor limits={bootstrap.avatar} userId={profile.userId} onSave={onProfile} onClose={() => setModal(null)} onExpired={onExpired}/>}
     {modal === 'password' && <PasswordEditor limits={bootstrap.auth.password} onClose={() => setModal(null)} onExpired={onExpired}/>}
   </>;
