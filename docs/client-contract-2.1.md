@@ -2,6 +2,8 @@
 
 实施中；当前完成范围见 [进度](client-contract-2.1-progress.md)。本文件随实现更新，候选验收前不应当作已全部可用的服务声明。
 
+前端接入顺序：[OpenAPI请求响应](openapi-v2.1.json) → [动作参数及错误处理](client-contract-2.1-actions.md) → [事件字段与可见范围](client-contract-2.1-events.md) → [代理、Cookie、Socket与倒计时示例](client-contract-2.1-examples.md)。共享类型在contracts/v2.ts和contracts/catalog.ts；[完整JSON/mock索引](../tests/fixtures/contract-2.1/full-index.json)覆盖主要身份与阶段。运维与候选切换见 [运行手册](client-contract-2.1-runbook.md)。
+
 ## 版本与身份
 
 API 前缀 `/api/v2`，规则版本 `2.0`，契约版本 `2.1`。账户名只读并作为显示名。Cookie 由服务端设置，浏览器不能读取令牌，也不把令牌写入 localStorage。`/auth/me` 查询当前登录身份；登录不自动接管其他设备的房间。
@@ -25,6 +27,8 @@ Room 的 roomId 与房间码跨局不变。memberId 表示当前房间成员，�
 命令结果不明时查询 `GET /rooms/:code/games/:gameId/receipts/:requestId`。`not_seen` 只表示查询执行时尚未看到记录，不能显示“操作失败”；可以原 ID 原载荷重试。`pending` 继续查询；`accepted/rejected` 是已有回执。查询永不重新执行动作，回执保留至当前复盘结束。注册响应丢失应使用用户名密码登录恢复，不盲目重复注册。
 
 聊天使用 clientMessageId，返回与 Socket 快照相同的 messageId。乐观消息以 clientMessageId 关联，messageId 去重；不能把一次 HTTP 超时显示为肯定发送失败。聊天 cursor 只在当前有权读取的 game/channel 内排序，不跨局比较。
+
+聊天text是纯文本，服务端去掉首尾空白并拒绝空内容；输入上限500个UTF-16代码单元。前端按文本渲染，乐观内容以服务端确认的text替换，不能将玩家消息解释为HTML或Markdown指令。
 
 成功聊天按 gameId+本人 playerId+clientMessageId 保存原回执。相同完整载荷重试返回原201回执，不重复发送或消耗新消息频率额度；不同载荷复用ID返回409 request_id_reused。重试仍需当前本人控制权；新设备接管后旧会话不能读取旧回执。新一局重新计算，不继承上一局记录。审计库保存 messageId/clientMessageId，复盘沿用原 messageId；审计整数id不作为实时频道游标。
 

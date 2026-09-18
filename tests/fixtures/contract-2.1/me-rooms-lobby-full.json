@@ -1,0 +1,18 @@
+{
+  "currentRoomId": "r_68fa76bf9fb07f3c60080dbc9400401a",
+  "rooms": [
+    {
+      "roomId": "r_68fa76bf9fb07f3c60080dbc9400401a",
+      "roomCode": "4VCSMU",
+      "gameId": null,
+      "phase": "lobby",
+      "memberId": "m_55e2ba61fedd5fea41ff903edddcf929",
+      "kind": "formal",
+      "playerId": null,
+      "activeHere": true,
+      "controlling": true,
+      "canRecover": false,
+      "requiresTakeover": false
+    }
+  ]
+}

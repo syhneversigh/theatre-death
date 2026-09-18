@@ -1,0 +1,12 @@
+{
+  "gameId": "g_869eef9832e327821aac312fcfe7e424",
+  "channel": "public",
+  "message": {
+    "messageId": "310ef3c4-def9-4da9-a7d2-3adfc1e1ec8a",
+    "clientMessageId": "contract-chat",
+    "cursor": 1,
+    "senderId": "p_f95ba25f2491c43e",
+    "text": "contract message",
+    "at": 91000
+  }
+}

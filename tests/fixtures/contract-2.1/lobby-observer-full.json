@@ -1,0 +1,346 @@
+{
+  "contractVersion": "2.1",
+  "rulesVersion": "2.0",
+  "roomId": "r_68fa76bf9fb07f3c60080dbc9400401a",
+  "gameId": null,
+  "viewer": {
+    "userId": "XXKTcGepLWVpYIUzzVa2X1k4wsNUQaWH8R29UGb7mkw",
+    "memberId": "m_e572467a9bef9725e4c4122694b676d2",
+    "kind": "public_spectator",
+    "subjectPlayerId": null,
+    "readOnly": true,
+    "isHost": false
+  },
+  "room": {
+    "code": "4VCSMU",
+    "phase": "lobby",
+    "config": {
+      "rulesetId": "theater-death",
+      "version": "2.0",
+      "mode": "formal",
+      "roles": {
+        "laike": 1,
+        "door": 1,
+        "water": 1,
+        "descender": 1,
+        "researcher": 1,
+        "civilian": 4,
+        "death": 1,
+        "spirit": 2,
+        "mourner": 1
+      },
+      "timersSeconds": {
+        "faction": 60,
+        "ability": 30,
+        "vote": 60,
+        "speech": 120,
+        "election": 30,
+        "handover": 45,
+        "lastWords": 60,
+        "tieSpeech": 45,
+        "speechPrepare": 15,
+        "speechOrder": 45
+      },
+      "sheriff": {
+        "enabled": true,
+        "voteWeight": 1.5,
+        "handover": "designate_or_destroy"
+      },
+      "lastWords": {
+        "firstNight": true,
+        "dayEliminated": true,
+        "otherNights": false
+      },
+      "teamConfirm": "unanimous_or_latest",
+      "duplicateTargetPolicy": "allow",
+      "attackOrder": "seat_asc_then_source_priority",
+      "researcherAnnouncement": {
+        "count": "alive_at_announcement",
+        "includesMourner": true
+      },
+      "stageTriggerSnapshot": "death_event",
+      "replayDisclosure": "all_chat_and_action_log",
+      "stage1SpiritQuota": "eligibleLivingSpiritCount",
+      "stage1DeathQuota": 2,
+      "stage1OverkillThreshold": "initialSpiritCount",
+      "stage2JointQuota": 2,
+      "guardTargets": 2,
+      "guardBlocksPerTarget": 1,
+      "simultaneousWinPriority": "death_faction",
+      "researcherCondition": "currently_dead"
+    },
+    "requiredPlayers": 13,
+    "hostMemberId": "m_55e2ba61fedd5fea41ff903edddcf929",
+    "formalMembers": [
+      {
+        "userId": "3jCDpIe5rUI2sKz2FG_oDiPHMepYJFVLMQYs6-84F20",
+        "username": "http_user_1",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_55e2ba61fedd5fea41ff903edddcf929",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": true
+      },
+      {
+        "userId": "cTu89AddK272fHFLpFWFFrjD1KXdmk5jD9lj8sGHRTc",
+        "username": "http_user_2",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_26a30b3cac9bbbda6b714639315b87d5",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "dKJWBVh3_RIgYClZre_iyEeLvcNG4ILsCBsdku7WjTs",
+        "username": "http_user_3",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_06e9c1f79691f9bc8f99b60964b21696",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "rvB0rT1587tNuVrmoxLH0m-oYoHAEjYvutN7p1VFau0",
+        "username": "http_user_4",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_c502399462db958a44668aad885db652",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "b30X115BXE0OC224lqIjPcD7ICgManSI7WdI-fO5K1w",
+        "username": "http_user_5",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_b8d7541ae4281f8f562479f2e3312f05",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "XPQ1ppmz3hjvrINS6Iza3OejnLOJmy5S_dDcRw6fjlM",
+        "username": "http_user_6",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_f5fda847ca6d8d124a78117bda0c774c",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "_aD1j706qwOzE9bJS4kgGvVY59uyCas4vaciS5lsmPA",
+        "username": "http_user_7",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_bd43e9bb491e08d8c0b30885e09e8de0",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "mLYC8BZV1NyzkflE09zVJYTTJlhOr68WvqYSnGxdTq4",
+        "username": "http_user_8",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_78362ef4e57e1da5cf835b374144fe42",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "mdPCGI5veTB15ZFivyD9HV_8oDMXM0yE7weFggvV8Bg",
+        "username": "http_user_9",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_d3baa95e9143f57dc64a431185b5ad07",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "yOcbbQfwvFt0CChMbKcTg_Rfr_N7UZdSmt_LeQkKJ5c",
+        "username": "http_user_10",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_93c2fb410059b3c51d04253c821ea5a3",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "HlEx4FBEkPlDdTgqNwbjZsnhT5-zEXuT7RxOzpX_x34",
+        "username": "http_user_11",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_f7620d264ccecdae24d8f57ae63c1871",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "XUKPm4QT8bzRgawRsO1-b8W8uLcXpkMLdKybZXesrNk",
+        "username": "http_user_12",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_213e08170e7a8c58fa05c6a1d094c72e",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      },
+      {
+        "userId": "hDKEWeWm4mjfpeaWV7lRVNDrviGJQDvbWrQTrXlgK0c",
+        "username": "http_user_13",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_2096b40ceab1881850aef59666863a73",
+        "kind": "formal",
+        "playerId": null,
+        "ready": false,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      }
+    ],
+    "spectators": [
+      {
+        "userId": "XXKTcGepLWVpYIUzzVa2X1k4wsNUQaWH8R29UGb7mkw",
+        "username": "http_user_14",
+        "avatarUrl": null,
+        "profileVersion": 0,
+        "memberId": "m_e572467a9bef9725e4c4122694b676d2",
+        "kind": "public_spectator",
+        "playerId": null,
+        "ready": null,
+        "presence": "offline",
+        "joinedAt": 1000,
+        "isHost": false
+      }
+    ],
+    "emptyDeadline": null
+  },
+  "public": null,
+  "private": null,
+  "capabilities": {
+    "canPostPublic": false,
+    "canPostFaction": false,
+    "canPublishVoice": false,
+    "canVote": false,
+    "allowedCommands": [],
+    "commandReasons": {
+      "SUBMIT_GUARD": "spectator_read_only",
+      "SUBMIT_LAIKE": "spectator_read_only",
+      "EDIT_PROPOSAL": "spectator_read_only",
+      "CONFIRM_PROPOSAL": "spectator_read_only",
+      "SUBMIT_CHECK": "spectator_read_only",
+      "SUBMIT_RESCUE": "spectator_read_only",
+      "SUBMIT_REVIVE": "spectator_read_only",
+      "REGISTER_CANDIDACY": "spectator_read_only",
+      "WITHDRAW_CANDIDACY": "spectator_read_only",
+      "START_SPEECH": "spectator_read_only",
+      "END_ELECTION_SPEECH": "spectator_read_only",
+      "SUBMIT_ELECTION_VOTE": "spectator_read_only",
+      "DESIGNATE_SPEECH": "spectator_read_only",
+      "END_SPEECH": "spectator_read_only",
+      "SUBMIT_DAY_VOTE": "spectator_read_only",
+      "END_TIE_SPEECH": "spectator_read_only",
+      "END_LAST_WORDS": "spectator_read_only",
+      "SUBMIT_HANDOVER": "spectator_read_only"
+    },
+    "room": {
+      "ready": {
+        "allowed": false,
+        "reason": "spectator_read_only"
+      },
+      "start": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "promote": {
+        "allowed": false,
+        "reason": "room_full"
+      },
+      "leave": {
+        "allowed": true,
+        "reason": null
+      },
+      "transferHost": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "dissolve": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "endReview": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "kickFormal": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "kickSpectator": {
+        "allowed": false,
+        "reason": "not_host"
+      },
+      "inviteSecondScreen": {
+        "allowed": false,
+        "reason": "spectator_read_only"
+      },
+      "revokeSecondScreen": {
+        "allowed": false,
+        "reason": "spectator_read_only"
+      }
+    }
+  },
+  "windows": [],
+  "tasks": [],
+  "submissionState": [],
+  "chat": {
+    "public": [],
+    "faction": []
+  },
+  "serverTime": 1000,
+  "viewVersion": 1
+}

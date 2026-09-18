@@ -1,0 +1,18 @@
+{
+  "currentRoomId": "r_566b63041ef82b1668639b8497c3160a",
+  "rooms": [
+    {
+      "roomId": "r_566b63041ef82b1668639b8497c3160a",
+      "roomCode": "BXRQBR",
+      "gameId": null,
+      "phase": "lobby",
+      "memberId": "m_99a533c73a42dc8354e892ba750afcb7",
+      "kind": "formal",
+      "playerId": null,
+      "activeHere": true,
+      "controlling": true,
+      "canRecover": false,
+      "requiresTakeover": false
+    }
+  ]
+}

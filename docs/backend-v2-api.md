@@ -1,5 +1,7 @@
 # 后端 v2 接口契约
 
+> 历史rc.1接口记录。新前端请使用 [契约2.1](client-contract-2.1.md)、[OpenAPI](openapi-v2.1.json) 和 [实际验证进度](client-contract-2.1-progress.md)。2.1仍使用/api/v2，但不保留本文旧join/watch/gameId握手协议。
+
 本地候选入口 http://localhost:3001，仅提供API，未提供新版网页。旧版网页和对局仍使用3000端口，旧Cookie不能访问v2。
 
 所有POST均为application/json。同源浏览器请求，生产必须HTTPS。账户Cookie为td_account_v2（HttpOnly、SameSite=Strict、7天，生产Secure），禁止把凭证放进URL。HTTP错误统一为 `{ "error": { "code": "...", "message": "..." } }`。
