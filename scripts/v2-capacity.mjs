@@ -1,11 +1,13 @@
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { io } from 'socket.io-client';
 
 const base = process.env.BASE_URL ?? 'http://load-app:3000';
 const fixturePath = process.env.FIXTURE_PATH ?? '/app/test-results-v2/load-fixture.json';
 const resultPath = process.env.RESULT_PATH ?? '/app/test-results-v2/capacity.json';
 const durationMs = Number(process.env.DURATION_MS ?? 5 * 60_000);
+if (!Number.isSafeInteger(durationMs) || durationMs < 1000) throw new Error('DURATION_MS must be an integer >=1000');
 const intervalMs = 2_500;
 const fixture = JSON.parse(await readFile(fixturePath, 'utf8'));
 const accounts = fixture.accounts;
@@ -17,6 +19,9 @@ const clients = [];
 const diagnosticsSamples = [];
 let sampler = null;
 let cleanupStarted = false;
+let loadStartedAt = null;
+let observedDurationMs = 0;
+let activeBeforeCleanup = 0;
 let minActiveDuringLoad = Number.POSITIVE_INFINITY;
 const recordError = (message, detail = {}) => { stats.errors.push({ message, ...detail }); };
 const jsonRequest = async (account, path, init = {}, metric = false) => {
@@ -26,9 +31,9 @@ const jsonRequest = async (account, path, init = {}, metric = false) => {
   const started = performance.now();
   try {
     const response = await fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(10_000) });
-    const elapsedMs = performance.now() - started;
     let body = null;
     try { body = await response.json(); } catch { /* reported below */ }
+    const elapsedMs = performance.now() - started;
     if (metric) stats.http.push({ elapsedMs, status: response.status, method: init.method ?? 'GET', path });
     if (response.status >= 500) recordError('http_5xx', { status: response.status, path });
     if (response.status < 200 || response.status >= 300) recordError('http_unexpected_status', { status: response.status, path });
@@ -48,34 +53,48 @@ const expectOk = async (account, path, body, expected = 200) => {
 };
 
 const createRoom = async (players) => {
-  const created = await expectOk(players[0], '/api/v2/rooms', { nickname: players[0].username }, 201);
-  players[0].expectedPlayerId = created.playerId;
+  const created = await expectOk(players[0], '/api/v2/rooms', { requestId: randomUUID() }, 201);
+  if (created.gameId !== null || created.playerId !== null) throw new Error('lobby allocated game identity prematurely');
   for (const player of players.slice(1)) {
-    const joined = await expectOk(player, `/api/v2/rooms/${created.roomCode}/join`, { nickname: player.username }, 201);
-    player.expectedPlayerId = joined.playerId;
+    await expectOk(player, `/api/v2/rooms/${created.roomCode}/enter`, { requestId: randomUUID() });
   }
-  for (const player of players) await expectOk(player, `/api/v2/rooms/${created.roomCode}/ready`, { ready: true });
-  await expectOk(players[0], `/api/v2/rooms/${created.roomCode}/start`, {});
-  return created;
+  for (const player of players) await expectOk(player, `/api/v2/rooms/${created.roomCode}/ready`, { requestId: randomUUID(), ready: true });
+  const started = await expectOk(players[0], `/api/v2/rooms/${created.roomCode}/start`, { requestId: randomUUID() });
+  for (const player of players) {
+    const { body } = await jsonRequest(player, `/api/v2/rooms/${created.roomCode}/view`);
+    player.expectedPlayerId = body?.viewer?.subjectPlayerId;
+    if (!player.expectedPlayerId || body?.private?.self?.username !== player.username) throw new Error('started player identity mismatch');
+  }
+  return { ...created, gameId: started.gameId };
 };
 
 const validateView = (client, body) => {
   if (!body || typeof body !== 'object') return;
   if (!client.player) {
-    if (body.private !== null || (body.capabilities?.allowedCommands?.length ?? 0) !== 0) stats.privacyViolations += 1;
+    if (body.private !== null || (body.capabilities?.allowedCommands?.length ?? 0) !== 0 || body.capabilities?.canPublishVoice || body.capabilities?.canPostPublic || body.capabilities?.canPostFaction || body.chat?.faction?.length || body.submissionState?.length || body.tasks?.length) stats.privacyViolations += 1;
     return;
   }
   if (body.private?.self?.playerId !== client.account.expectedPlayerId) stats.selfViolations += 1;
+  for (const messages of Object.values(body.chat ?? {})) {
+    const ids = new Set(), intents = new Set();
+    for (const message of messages) {
+      const intent = JSON.stringify([message.senderId, message.clientMessageId]);
+      if (ids.has(message.messageId) || intents.has(intent)) stats.receiptMismatches += 1;
+      ids.add(message.messageId); intents.add(intent);
+    }
+  }
 };
 
 try {
+const { body: bootstrap } = await jsonRequest(accounts[0], '/api/v2/bootstrap');
+if (bootstrap?.contractVersion !== '2.1') throw new Error('capacity client requires contract 2.1');
 const room1 = await createRoom(accounts.slice(0, 13));
 const room2 = await createRoom(accounts.slice(13, 26));
 const rooms = [room1, room2];
 for (let roomIndex = 0; roomIndex < rooms.length; roomIndex += 1) {
   const room = rooms[roomIndex];
   for (const spectator of accounts.slice(26 + roomIndex * 12, 38 + roomIndex * 12)) {
-    await expectOk(spectator, `/api/v2/rooms/${room.roomCode}/watch`, {} , 201);
+    await expectOk(spectator, `/api/v2/rooms/${room.roomCode}/enter`, { requestId: randomUUID() });
   }
 }
 
@@ -84,7 +103,7 @@ for (let roomIndex = 0; roomIndex < rooms.length; roomIndex += 1) {
   const playerAccounts = accounts.slice(roomIndex * 13, roomIndex * 13 + 13);
   const spectatorAccounts = accounts.slice(26 + roomIndex * 12, 38 + roomIndex * 12);
   for (const account of [...playerAccounts, ...spectatorAccounts]) {
-    const socket = io(base, { path: '/api/v2/socket.io', auth: { gameId: room.gameId }, extraHeaders: { cookie: account.cookie }, reconnection: false, timeout: 10_000 });
+    const socket = io(base, { path: '/api/v2/socket.io', auth: { roomId: room.roomId }, extraHeaders: { cookie: account.cookie }, reconnection: false, timeout: 10_000 });
     const client = { room, account, player: playerAccounts.includes(account), lastCommand: 0, lastChat: 0, submittedWindows: new Set() };
     socket.on('connect_error', (error) => { stats.socketErrors += 1; recordError('socket_connect_error', { error: String(error) }); });
     socket.on('error', (error) => { stats.socketErrors += 1; recordError('socket_error', { error: String(error) }); });
@@ -125,7 +144,10 @@ const tick = async () => {
     validateView(client, result.body);
     if (!client.player) return;
     if (result.body.capabilities?.canPostPublic && Date.now() - client.lastChat >= 30_000) {
-      await post(client.account, `/api/v2/rooms/${client.room.roomCode}/chat`, { channel: 'public', text: `capacity-${client.account.username}` }, true);
+      const payload = { gameId: client.room.gameId, clientMessageId: randomUUID(), channel: 'public', text: `capacity-${client.account.username}` };
+      const first = await post(client.account, `/api/v2/rooms/${client.room.roomCode}/chat`, payload, true);
+      const second = await post(client.account, `/api/v2/rooms/${client.room.roomCode}/chat`, payload, true);
+      if (JSON.stringify(first.body) !== JSON.stringify(second.body) || !first.body?.message?.messageId) stats.receiptMismatches += 1;
       client.lastChat = Date.now();
     }
     if (Date.now() - client.lastCommand < 7_500) return;
@@ -141,7 +163,7 @@ const tick = async () => {
     client.lastCommand = Date.now();
     client.submittedWindows.add(window.instanceId);
     const requestId = `capacity-${client.account.username}-${Date.now()}`;
-    const payload = { requestId, action, windowInstanceId: window.instanceId, targets: [] };
+    const payload = { requestId, gameId: client.room.gameId, action, windowInstanceId: window.instanceId, targets: [] };
     const first = await post(client.account, `/api/v2/rooms/${client.room.roomCode}/command`, payload, true);
     if (action === 'START_SPEECH' || action === 'END_SPEECH') {
       const second = await post(client.account, `/api/v2/rooms/${client.room.roomCode}/command`, payload, true);
@@ -150,7 +172,8 @@ const tick = async () => {
   }));
 };
 
-const deadline = Date.now() + durationMs;
+loadStartedAt = Date.now();
+const deadline = loadStartedAt + durationMs;
 while (Date.now() < deadline) {
   await tick();
   await new Promise((resolve) => setTimeout(resolve, Math.min(intervalMs, Math.max(0, deadline - Date.now()))));
@@ -158,6 +181,8 @@ while (Date.now() < deadline) {
 } catch (error) {
   recordError('setup_or_load_failed', { error: String(error) });
 } finally {
+  observedDurationMs = loadStartedAt === null ? 0 : Date.now() - loadStartedAt;
+  activeBeforeCleanup = sockets.filter((socket) => socket.connected).length;
   if (sampler) clearInterval(sampler);
   cleanupStarted = true;
   for (const socket of sockets) socket.disconnect();
@@ -168,14 +193,16 @@ const report = {
   startedAt: stats.startedAt,
   finishedAt: new Date().toISOString(),
   durationMs,
+  observedDurationMs,
+  contractVersion: '2.1',
   clients: { accounts: 100, activeSockets: stats.sockets, rooms: 2, players: 26, publicSpectators: 24 },
   ordinaryApi: { samples: sorted.length, p95Ms: percentile(sorted, 0.95), excluded: ['/healthz', '/api/v2/auth/login', '/api/v2/diagnostics'] },
   diagnostics: diagnosticsSamples.length ? { samples: diagnosticsSamples.length, peakRss: Math.max(...diagnosticsSamples.map((sample) => sample.rss)), maxEventLoopP99Ms: Math.max(...diagnosticsSamples.map((sample) => sample.eventLoopP99Ms)) } : null,
-  sockets: { created: sockets.length, connected: stats.socketConnected, disconnected: stats.socketDisconnected, activeAtEnd: stats.socketConnected - stats.socketDisconnected, minActiveDuringLoad: Number.isFinite(minActiveDuringLoad) ? minActiveDuringLoad : 0 },
+  sockets: { created: sockets.length, connected: stats.socketConnected, disconnectedIncludingCleanup: stats.socketDisconnected, activeAtEnd: activeBeforeCleanup, minActiveDuringLoad: Number.isFinite(minActiveDuringLoad) ? minActiveDuringLoad : 0 },
   errors: { count: stats.errors.length, http5xxOrNetwork: stats.errors.filter((e) => e.message === 'http_5xx' || e.message === 'http_network_error').length, unexpectedHttp: stats.errors.filter((e) => e.message.startsWith('http_')).length, socket: stats.socketErrors, receiptMismatches: stats.receiptMismatches, privacyViolations: stats.privacyViolations, selfViolations: stats.selfViolations, samples: stats.errors.slice(0, 20) },
   thresholds: { ordinaryApiP95Ms: 300, eventLoopP99Ms: 100, rssBytes: 1_000_000_000 },
 };
 await mkdir(dirname(resultPath), { recursive: true });
 await writeFile(resultPath, JSON.stringify(report, null, 2));
-const failed = report.ordinaryApi.p95Ms === null || report.ordinaryApi.p95Ms >= 300 || report.errors.count > 0 || report.errors.http5xxOrNetwork > 0 || report.errors.unexpectedHttp > 0 || report.errors.socket > 0 || report.errors.receiptMismatches > 0 || report.errors.privacyViolations > 0 || report.errors.selfViolations > 0 || report.sockets.minActiveDuringLoad < 50 || !report.diagnostics || !Number.isFinite(report.diagnostics.maxEventLoopP99Ms) || !Number.isFinite(report.diagnostics.peakRss) || report.diagnostics.maxEventLoopP99Ms >= 100 || report.diagnostics.peakRss >= 1_000_000_000;
+const failed = observedDurationMs < durationMs || report.ordinaryApi.p95Ms === null || report.ordinaryApi.p95Ms >= 300 || report.errors.count > 0 || report.errors.http5xxOrNetwork > 0 || report.errors.unexpectedHttp > 0 || report.errors.socket > 0 || report.errors.receiptMismatches > 0 || report.errors.privacyViolations > 0 || report.errors.selfViolations > 0 || report.sockets.minActiveDuringLoad < 50 || !report.diagnostics || !Number.isFinite(report.diagnostics.maxEventLoopP99Ms) || !Number.isFinite(report.diagnostics.peakRss) || report.diagnostics.maxEventLoopP99Ms >= 100 || report.diagnostics.peakRss >= 1_000_000_000;
 if (failed) process.exitCode = 1;

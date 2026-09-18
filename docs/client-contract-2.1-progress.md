@@ -81,3 +81,7 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 12b选择器源码SHA256 3cc92b4238c4376b77afd50d7e8e0bf4c15d9c45b57943d68eadd976edf9460f，测试ce290920813f0282a21143096f17e8c2b8e2734eb8b05670ec56229ceee90a36。12a提交前仅清除JSON文件末尾多余空行，测试数据未变。原上游main发布工作流保留；本次新增backend-v2-candidate手动工作流不推送/部署镜像，只做候选门禁与身份记录。真正候选构建仍由13执行。
 
 13a基线571ebe2：Luna seed独立data-v2-load/contract-2.1（100账号），load-client在独立容器运行DURATION_MS=5000，保存test-results-v2/contract-2.1/capacity-probe.json，随后停止load-app；2CPU/4GiB已inspect确认。probe普通API P95失败，唯一diagnostics样本来自负载前，不能据此证明负载期P99。主代理用同库隔离探针测100份完整snapshot：每次读SQL资料742.24ms，预载资料且保留相同授权校验68.09ms，仅用于定位。缓存修复测试为account-profile-cache、avatars、avatars-api、account-profile共20例及typecheck；SQLite在UPDATE前abort验证此前asset插入也回滚，单文件复跑4/4。最终cache测试SHA256 feda91d56794a0d49c6674fe849f7032ec833380c639ecaa8e8dc46bc10457d2，account-store源码3c95b030f76bd899406ac9db4e11df47ad80a5c4839b5728c04e91080fa28775。
+
+82e8975后仅再做一次5秒probe：复用原100账号，50连接全程保留，P95=280.17ms，错误/重复/泄漏均0；结果capacity-probe-profile-cache.json，客户端exit0，随后停止load-app。仍是源码挂载短检查，不能代替正式候选5分钟。正式load-app已改为必须传V2_LOAD_IMAGE且只挂数据，load-client独立运行，不读取服务数据库。
+
+发布关键链补充：contract-release-flow单文件1例通过，真实HTTP与假时钟完成首日竞选→晨间→普通发言（超时推进）→非终局放逐天理→遗言→移交→第二夜击杀继任天理→公开晨间死讯→无遗言且普通发言前移交。所有提交回执accepted、gameId稳定、公开HTTP seats和deaths_announced均验证；未直接修改phase/win。最终测试hash 25068ca6751295225b1f5d0444fdedc081b940fa551e9b4181d603b7c598f8b3。

@@ -22,7 +22,7 @@ describe('incremental test selector', () => {
     expect(selected('tests/contract-http-utils.ts')).toEqual([
       'tests/client-catalog.test.ts', 'tests/chat-receipts-api.test.ts', 'tests/room-operation-api.test.ts',
       'tests/contract-http-lifecycle.test.ts', 'tests/command-receipts-api.test.ts', 'tests/contract-knowledge-api.test.ts',
-      'tests/v2-api.test.ts', 'tests/contract-openapi.test.ts', 'tests/contract-client-example.test.ts',
+      'tests/v2-api.test.ts', 'tests/contract-openapi.test.ts', 'tests/contract-client-example.test.ts', 'tests/contract-release-flow.test.ts',
     ]);
     expect(selected('tests/server-test-utils.ts')).toEqual([
       'tests/server-api.test.ts', 'tests/realtime.test.ts', 'tests/spectator.test.ts', 'tests/review.test.ts', 'tests/voice-api.test.ts',

@@ -1,37 +1,38 @@
-# 2.1 接续位置（实现尚未完成）
+# 2.1 接续位置（候选验收尚未完成）
 
-当前领域层、HTTP、Socket与维护已完成08c增量验证。检查点 `v2.1-rooms-checkpoint` 在 `b80567c`，不代表完整候选。下一步09开始请求回执与聊天确认。全部决定、范围与最终门禁见plan/progress/verification，不能把部分测试当成2.1交付完成。
+实际进度以 [progress](client-contract-2.1-progress.md)、批准范围以 [plan](client-contract-2.1-plan.md) 为准。已完成01–12；13短接通发现并修复资料读取开销，正式候选构建、5分钟容量、回滚和3001切换尚未完成。集成分支目前82e8975，工作分支test/contract-capacity-client。v2.1-profile-checkpoint在7aa9abc。不要把健康检查或短probe当成完整交付。
 
-## 已接通HTTP，后续使用这些模块
+## 已完成的服务行为
 
-- `server/v2/app.ts` 已使用持续Room模型和roomId Socket，旧join/watch/unwatch路由未挂载。仍有未使用的旧spectators/second-screen/realtime辅助实现；可以单独清理，但保留测试覆盖，不当作兼容层继续暴露。
-- `StableRoom` 持续roomId/code/冻结ruleset，members按userId，participants为当前局冻结席位；startMatch创建独立Room运行时，queueOwner让旧引擎计时器共享稳定房间队列。matchStartedAt/matchEndedAt用于当前局时长。
-- `RoomDirectory` 的成员写操作统一目录队列→房间队列；enter/create/promote/leave/显式takeover。requestId幂等尚未接入（09）；不要把内部ActiveMember或StableRoom直接序列化，里面含session/epoch/数据库依赖，必须投影明确DTO。
-- `RoomGovernance` 管房主继任/转移/kick/dissolve。`changed(room,event)` 调 reconcile，presence的实际断线event才触发房主掉线接任，避免HTTP建房到首次Socket间隙误判。创建者初始房主；随后断线/过期/离开转最早在线正式成员。
-- `EmptyRooms.observe` 在成员变化后运行，beforeMutation调用expireIfDue，removed调用清理。旧maintenance的2小时/24小时规则必须删除替换；正式成员离线仍保留。空房到期进行中audit为aborted。
-- `ScreenGrants` 游戏绑定邀请/原子兑换/撤销；普通观众可升级，原局玩家（即使离开）不能借屏。撤销降公开并发screen_revoked，旧Socket断开。`RoomRounds.endReview`清runtime/access/participants/receipts/准备，私屏降公开，成员与连接保留。
-- `RoomSnapshots` 依赖directory、profile(userId)、可选submissions provider。已明确DTO、按账号+roomId版本、公开票数及只读投影。profile目前需要接真实AccountStore；schema1可先查询username+null头像/0版本，10再迁移。submissions默认空，09必须补真实状态。
-- `createRoomRealtime`（room-realtime.ts）以roomId握手，attachV2(server)、refresh(roomId)、control(room,sessionId|null,reason)、connectionCount、close。每帧重验会话/成员；已真实Socket测试跨局，不是旧realtime.ts以gameId握手的hub。旧ResolvedViewer/gameView仍供单局授权/媒体复用，不应暴露旧线协议。
-- 游戏broadcaster收到gameId后查对应StableRoom，及时recordCompletion、刷新roomId快照、media.sync当前RoomAccess。结束复盘close旧媒体房，不清除RoomSnapshots账号房间版本；仅房间移除forget(roomId)。
-- authRouter的onRevoked已携带sessionId/原因并await清理：控制设备logout立即leave，其他设备logout不影响当前成员；改密/重置/过期只releaseControl+离线，不删除formal。回调返回值类型unknown且忽略，兼容旧同步回调返回值。
-- 局内写操作检查gameId；房间操作带requestId。新增enter/promote/transfer-host/dissolve/end-review。所有显示名用账号名，不再要求nickname。新预设ID建议按草案用default-13；它与rulesetId=theater-death不同。只支持默认正式13，提供roles强制experimental，playerCount若有须等于总数。
-- 返回review时加实际startedAt/endedAt/durationMs及当前头像，角色/座位保留对局快照。
-- 新投影实际死亡公告前后链及HTTP→Socket→模拟语音授权已覆盖，见contract-knowledge-api、contract-http-lifecycle等。真实外部媒体网络仍未测试。
+- StableRoom持久roomId/code/冻结config；每局独立gameId/playerId/座位/角色。RoomDirectory管单房间成员、进入/接管/离开/补位，游戏驱动共享稳定房间队列。
+- 多连接presence、掉线宽限、房主转移、0正式成员5分钟回收、游戏绑定第二屏、复盘回大厅与连续两局均已增量验证。
+- app.ts已挂载2.1 HTTP；Socket用roomId。旧join/watch/gameId握手无入口。旧辅助模块仍被部分旧测试引用，不要为了清理文件误删媒体/授权依赖。
+- 明确RoomSnapshot投影、账号+房间viewVersion、当前窗口提交状态、pending/not_seen命令回执、房间操作幂等、聊天去重和持久messageId均完成。每次重读授权能力要重新检查当前控制会话。
+- proposal的latest草稿和effective截止候选分开；旧全员确认优先于新的未确认草稿，空刀有版本与完全未提交不同。规则仍2.0，未改变结算算法。
+- 账号schema2新增头像引用/版本/资产表，原密码与有效会话保留；register/login/me返回flat profile，邀请码预检不消费。bootstrap/catalog已公开提供真实开关、约束、9角色、唯一正式13人板及完整54条规则。
+- avatar业务已分存储3c979e1与HTTP7aa9abc提交：静态三格式输入、Sharp重编码、并发2/等待8、异步提交前再鉴权、先完整文件后DB引用、7天未引用GC、HTTP认证下载和房间资料刷新。开发实例启用，3001旧候选尚未切换。
 
-过期current边界已修复：目录队列先在旧房间队列执行到期清理，再进入目标房间队列。maintenance测试真实覆盖未flush时create与enter两条HTTP路径。
+## 当前未提交/未验收的交付
 
-## 09–13仍需完成
+- docs/openapi-v2.1.json收录35路径/34schema，选定真实HTTP/Socket与19份完整JSON已通过Ajv2020 strict校验，入口tests/fixtures/contract-2.1/full-index.json。人工片段另列，不冒充完整RoomSnapshot。请求额外顶层字段忽略但参与指纹，响应明确投影。没有声称全部错误路径均已用schema测试遍历。
+- actions/events/examples/runbook及可执行客户端示例已在2a0331d提交。客户端示例5例与选择器6例、OpenAPI3例及最终tsc通过。gameView过滤了historyFromSeq，不是实际传输泄漏。
+- 负载客户端已用只读源码做两次5秒probe，独立100账号/50连接、均无错误/泄漏/重复。首次P95=1808.77ms失败；82e8975有界公开profile cache修复后P95=280.17ms。两份报告分别为capacity-probe.json与capacity-probe-profile-cache.json，保留失败证据；两次均已停止load-app释放3002。
+- 正式load-app编排已改为必须V2_LOAD_IMAGE且只挂data-v2-load/contract-2.1，接下来的5分钟必须使用新候选固定镜像。load-client外置、不挂数据库，fixture与报告在test-results-v2/contract-2.1；已seed，不能再对非空库seed或覆盖旧报告。
+- CI增量选择与手动候选工作流已在571ebe2提交。原main旧发布流程保留；2.1候选工作流不自动推送/部署。新增release-flow测试及helper映射尚待随负载客户端提交。
+- 候选仍必须完成一次完整单元/API镜像门禁、选定真实后端链、5分钟容量（100账号/50连接/2桌26玩家+24观众/2CPU4GB），以及镜像+数据库配套回滚验证。真实外部语音与前端UI不在本次完成范围。
+- 最终只切3001：确认无进行中对局、做新备份、按候选镜像升级并检查、保留旧镜像与备份；标签v2.1.0-rc.1，全部Git本地操作不推送。
 
-09 房间写操作幂等、命令pending/not_seen回执查询、私有提交状态、聊天clientMessageId稳定确认及载荷冲突；10 additive schema迁移保留账号/密码/有效session，auth/me资料、邀请码预检、bootstrap/catalog；11 Sharp真实头像上传/规范化/授权下载/7天未引用回收；12完整OpenAPI/DTO/实际JSON fixtures及文档核对、CI增量映射；13候选全量单元/API门禁、5分钟100账号50连接2CPU4GB容量、迁移副本和回滚验证、无进行中对局时备份后切换3001，标签v2.1.0-rc.1。具体指标与禁止范围以plan为准。
+## Docker与数据事实
 
-`docs/openapi-v2.1.json` 为未验证草案（34路径/34schema），先前仅从已知DTO和计划整理；必须与最终HTTP结果核对，补事件payload目录、webhook文档和真实示例验证。voice凭证实际只有url/token/roomName。`docs/rules-v2-full.md` 是54条规则合并文本，尚未接catalog；仍需校对、去新文件多余行尾空白并提交。当前未提交文档还包括actions/runbook/examples。`.dockerignore`有排除data-contract-2.1的未提交修改，须随环境文件纳入提交。
+- Docker绝对路径C:/Users/xumat/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe；PowerShell PATH加该目录。Docker与Git修改用require_escalated；不要推断沙箱LOCALAPPDATA就是实际用户目录。
+- compose.contract继承compose.v2，server/contracts/docs/tests等只读挂载；当前依赖镜像theater-death-contract-deps:sharp0354-ajv820，Node24.15.0/Sharp0.35.4/Ajv8.20.0。依赖锁改变才重建Dockerfile.dependencies；正式候选用Dockerfile.v2执行一次全量门禁。
+- 3000保持上游cc3e48e镜像；3001保持旧e44d12c候选，image sha256:c08b5617b6e018479f1c50d902d42114561d55483e8cca047db9292ba248e913。最终切换前重新核实实时状态。
+- 3003已备份到data-v2-test/dev-before-profile-2.1并重新创建，原生Node加载7aa9abc源码。开发账号schema2、审计schema1、integrity均ok；bootstrap头像启用、语音关闭，catalog9角色10章。独立data-contract-2.1和Cookie td_account_contract_21，无热重载。不得把开发库覆盖正式data-v2。
+- Luna已运行scripts/check-contract-migration.mjs，把只读data-v2在线备份到data-v2-test/migration-contract-2.1-check-1，得到账号schema2/审计schema1、两库integrity ok及幂等重开。正式库当时各表0行，真实旧凭证保留由带数据的schema1测试证明。
+- 旧stale socket故障已仅隔离Docker/run及docker-secrets-engine目录并留备份；没有factory reset或删除镜像、虚拟磁盘。
 
-## 运行与工具事实
+## 测试接续
 
-- 本轮Docker启动又遇stale socket；已只隔离 `C:/Users/xumat/AppData/Local/Docker/run` 与仅含engine.sock的docker-secrets-engine，保留quarantine备份。未factory reset或删除镜像/磁盘。3000/3001已恢复，健康检查均ok。
-- Docker绝对路径 `C:/Users/xumat/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe`，PowerShell PATH加同目录，Docker/Git修改需require_escalated。不要由sandbox的LOCALAPPDATA推真实Docker路径。
-- 所有测试在 `docker compose -f deploy/compose.contract.yml run --rm --no-deps test ...`，继承compose.v2.yml源码只读挂载，依赖仍旧cc3e48e镜像；Sharp尚未引入，后续锁文件变化必须单独刷新依赖镜像。
-- 3003已原生Node启动并通过健康检查（源码只读挂载，尚未热重载后续修改）。独立data-contract-2.1由SQLite在线备份得到，两库integrity_check=ok；当前账号schema1。10执行副本迁移前先停开发容器，再按新版源码重启，不可拿开发数据覆盖正式库。
-- 旧3000镜像cc3e48e；3001仍为e44d12c候选，镜像sha256:c08b5617b6e018479f1c50d902d42114561d55483e8cca047db9292ba248e913。最终部署前重新确认实时状态/无进行中对局。
-- Git不推送。命令加safe.directory=D:/myApps/暴风雪剧院/theater-death与user.name=Codex/user.email=codex@localhost；独立小分支测试后ff合入backend/client-contract-2.1。
-- 测试代理：round_cycle_tests、http_security_tests（Luna high）可接续。测试报告曾有“标题即覆盖”及删减正确断言的问题，主代理已审阅补强；必须检查真实断言和运行输出。
+继续使用http_security_tests与round_cycle_tests（用户指定Luna）。只让测试代理修改约定测试文件，冻结被测源码，指定文件运行；审阅断言后再本地短分支提交并ff合入backend/client-contract-2.1。头像、资料cache和完整mock均已审阅实际断言。最新contract-release-flow 1例通过：真实HTTP两昼夜、非终局放逐天理后遗言移交、继任者夜死后公开公告并在普通发言前移交；普通发言以FakeClock超时推进，不是13次END。新增缓存回归20例与tsc通过，SQLite UPDATE前abort验证真实回滚后仅cache单文件4例补强通过。
+
+Git命令使用safe.directory=D:/myApps/暴风雪剧院/theater-death与user.name=Codex/user.email=codex@localhost。仓库外Issue目录保留入口，最终交付时更新指向新版契约与实际验收记录。

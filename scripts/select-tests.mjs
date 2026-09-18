@@ -5,7 +5,7 @@ const mappings = [
   [/^docs\/openapi-v2\.1\.json$|^tests\/(fixtures\/contract-2\.1\/|contract-schema-utils\.ts$)/, ['contract-openapi']],
   [/^docs\/examples\/contract-client\.ts$/, ['contract-client-example']],
   [/^docs\/rules-v2-full\.md$|^contracts\/catalog\.ts$/, ['client-catalog', 'contract-openapi']],
-  [/^tests\/contract-http-utils\.ts$/, ['client-catalog', 'chat-receipts-api', 'room-operation-api', 'contract-http-lifecycle', 'command-receipts-api', 'contract-knowledge-api', 'v2-api', 'contract-openapi', 'contract-client-example']],
+  [/^tests\/contract-http-utils\.ts$/, ['client-catalog', 'chat-receipts-api', 'room-operation-api', 'contract-http-lifecycle', 'command-receipts-api', 'contract-knowledge-api', 'v2-api', 'contract-openapi', 'contract-client-example', 'contract-release-flow']],
   [/^tests\/server-test-utils\.ts$/, ['server-api', 'realtime', 'spectator', 'review', 'voice-api']],
   [/^tests\/helpers\.ts$/, ['capabilities', 'engine-night', 'engine-morning', 'engine-info', 'engine-day', 'contract-snapshots', 'deadline-queue', 'night-driver', 'knowledge', 'day-driver', 'v2-first-election', 'targets', 'v2-handover', 'v2-media', 'v2-proposal', 'v2-realtime', 'v2-timers', 'v2-victory', 'visibility', 'window-instances', 'voice-policy']],
   [/^scripts\/select-tests\.mjs$/, ['test-selection']],
