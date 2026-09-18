@@ -27,6 +27,10 @@ export interface StoredRoomRecord {
 }
 
 export interface LogStore {
+  recordPersistentRoom(room: { roomId: string; code: string; createdAt: number; ruleset: unknown }): void;
+  recordMatch(match: { gameId: string; roomId: string; startedAt: number }): void;
+  finishMatch(gameId: string, status: 'completed' | 'aborted', at: number): void;
+  listMatches(roomId: string): Array<{ gameId: string; roomId: string; startedAt: number; endedAt: number | null; status: 'playing' | 'completed' | 'aborted' }>;
   appendEvents(gameId: string, events: readonly GameEvent[]): void;
   appendMessage(gameId: string, message: StoredMessage): void;
   /** 保存房间创建时的板子快照（含实验模式值，T-49 / R-54） */
@@ -66,6 +70,15 @@ export function createLogStore(path: string): LogStore {
       created_at INTEGER NOT NULL,
       ruleset TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS persistent_rooms (
+      room_id TEXT PRIMARY KEY, code TEXT NOT NULL, created_at INTEGER NOT NULL, ruleset TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS matches (
+      game_id TEXT PRIMARY KEY, room_id TEXT NOT NULL REFERENCES persistent_rooms(room_id),
+      started_at INTEGER NOT NULL, ended_at INTEGER,
+      status TEXT NOT NULL CHECK(status IN ('playing','completed','aborted'))
+    );
+    CREATE INDEX IF NOT EXISTS matches_room ON matches(room_id);
   `);
 
   const insertEvent = db.prepare(
@@ -88,6 +101,20 @@ export function createLogStore(path: string): LogStore {
   );
 
   return {
+    recordPersistentRoom(room) {
+      db.prepare('INSERT INTO persistent_rooms VALUES(?,?,?,?)').run(room.roomId, room.code, room.createdAt, JSON.stringify(room.ruleset));
+    },
+    recordMatch(match) {
+      db.prepare("INSERT INTO matches VALUES(?,?,?,NULL,'playing')").run(match.gameId, match.roomId, match.startedAt);
+    },
+    finishMatch(gameId, status, at) {
+      db.prepare("UPDATE matches SET status=?,ended_at=? WHERE game_id=? AND status='playing'").run(status, at, gameId);
+    },
+    listMatches(roomId) {
+      return db.prepare('SELECT * FROM matches WHERE room_id=? ORDER BY started_at,game_id').all(roomId).map((r) => ({
+        gameId: String(r.game_id), roomId: String(r.room_id), startedAt: Number(r.started_at), endedAt: r.ended_at === null ? null : Number(r.ended_at), status: r.status as 'playing' | 'completed' | 'aborted',
+      }));
+    },
     appendEvents(gameId, events) {
       for (const event of events) {
         insertEvent.run(

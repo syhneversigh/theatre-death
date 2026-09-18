@@ -91,6 +91,8 @@ export class Room {
   readonly receipts = new Map<string, CommandReceipt>();
   voiceClosed = false;
   #queue: Promise<unknown> = Promise.resolve();
+  /** v2 persistent rooms share their queue with every match and timer. */
+  queueOwner: { enqueue<T>(task: () => T | Promise<T>): Promise<T> } | null = null;
 
   constructor(code: string, gameId: string, host: RoomMember, ruleset: RulesetConfig) {
     this.code = code;
@@ -105,6 +107,7 @@ export class Room {
   }
 
   enqueue<T>(task: () => T | Promise<T>): Promise<T> {
+    if (this.queueOwner) return this.queueOwner.enqueue(task);
     const result = this.#queue.then(task, task);
     this.#queue = result.then(
       () => undefined,
@@ -131,6 +134,19 @@ export class RoomRegistry {
 
   constructor(deps: RoomDeps) {
     this.#deps = deps;
+  }
+
+  /** A single-game runtime under a stable v2 room; legacy room lifecycle is unchanged. */
+  createMatch(code: string, players: readonly { nickname: string }[], ruleset: RulesetConfig, queueOwner: Room['queueOwner']): Room {
+    if (players.length === 0 || this.#roomsByCode.has(code)) throw new Error('Match room unavailable');
+    const members = players.map((p) => this.#makeMember(p.nickname));
+    const room = new Room(code, `g_${randomBytes(16).toString('hex')}`, members[0]!, ruleset);
+    room.members.push(...members.slice(1));
+    room.queueOwner = queueOwner;
+    this.#roomsByCode.set(code, room);
+    this.#roomsByGameId.set(room.gameId, room);
+    this.#deps.logStore.recordRoom({ gameId: room.gameId, code, createdAt: this.#deps.clock.now(), ruleset });
+    return room;
   }
 
   createRoom(
