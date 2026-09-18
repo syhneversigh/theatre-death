@@ -22,10 +22,10 @@ export function RuleMarkdown({ markdown }: { markdown: string }) {
   })}</div>;
 }
 
-export function RulesBook({ catalog, onClose }: { catalog: CatalogDTO; onClose: () => void }) {
+export function RulesBook({ catalog, onClose, context }: { catalog: CatalogDTO; onClose: () => void; context?: ReactNode }) {
   const [chapterId, setChapterId] = useState(catalog.rulebook.chapters[0]?.id ?? '');
   const chapter = catalog.rulebook.chapters.find(item => item.id === chapterId);
-  return <Modal title={`完整规则 · ${catalog.rulebook.version}`} onClose={onClose}><label className="select-field">章节<select aria-label="规则章节" value={chapterId} onChange={event => setChapterId(event.target.value)}>{catalog.rulebook.chapters.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
+  return <Modal title={`完整规则 · ${catalog.rulebook.version}`} onClose={onClose} context={context}><label className="select-field">章节<select aria-label="规则章节" value={chapterId} onChange={event => setChapterId(event.target.value)}>{catalog.rulebook.chapters.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>
     <p className="muted">正式版型的通用规则。实验房间的人数与角色组成以本房间冻结配置为准。</p>
     {chapter ? <article aria-label={chapter.title}><h2>{chapter.title}</h2><RuleMarkdown markdown={chapter.markdown}/></article> : <p>暂未找到该规则章节。</p>}
   </Modal>;

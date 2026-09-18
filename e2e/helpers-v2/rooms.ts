@@ -44,8 +44,19 @@ export async function confirmModal(page: Page, title: string): Promise<void> {
 }
 
 export async function leaveRoom(page: Page): Promise<void> {
-  const leave = page.getByRole('button', { name: '离开房间', exact: true });
-  if (!(await leave.isVisible().catch(() => false))) return;
+  let leave = page.getByRole('button', { name: '离开房间', exact: true });
+  if (!(await leave.isVisible().catch(() => false))) {
+    const manage = page.getByRole('button', { name: '房间管理', exact: true });
+    if (await manage.isVisible().catch(() => false)) {
+      await manage.click();
+      await expect(page.getByRole('button', { name: '离开房间', exact: true })).toBeVisible();
+      leave = page.getByRole('button', { name: '离开房间', exact: true });
+    } else {
+      const rooms = await myRooms(page);
+      expect(rooms.currentRoomId).toBeNull();
+      return;
+    }
+  }
   await leave.click();
   await confirmModal(page, '离开房间？');
   await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();

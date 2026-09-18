@@ -140,6 +140,7 @@ test('实验房间：五人冻结配置、观众晋升、离线开局与公开�
     await hostPage.reload();
     await expect(hostPage.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 20_000 });
     expect((await roomView(hostPage, code)).gameId).toBe(gameId);
+    await hostPage.getByRole('button', { name: '房间管理', exact: true }).click();
     await expect(memberCard(hostPage, accounts[2]!.username).getByRole('button', { name: '移出' })).toHaveCount(0);
     await kickMember(hostPage, accounts[1]!.username);
     await expect(contexts[1]!.page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();

@@ -26,12 +26,13 @@ export function Notice({ children, error = false }: { children: ReactNode; error
   return <div className={`notice ${error ? 'notice--error' : ''}`} role={error ? 'alert' : 'status'}>{children}</div>;
 }
 
-export function Modal({ title, children, onClose, dismissible = true }: { title: string; children: ReactNode; onClose: () => void; dismissible?: boolean }) {
+export function Modal({ title, children, onClose, dismissible = true, context }: { title: string; children: ReactNode; onClose: () => void; dismissible?: boolean; context?: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => { const dialog = ref.current; dialog?.showModal(); return () => dialog?.close(); }, []);
   return <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (dismissible) onClose(); }}>
     <header className="modal__head"><h2 id={titleId}>{title}</h2><button className="icon-button" type="button" aria-label="关闭" disabled={!dismissible} onClick={onClose}>×</button></header>
+    {context}
     {children}
   </dialog>;
 }

@@ -46,3 +46,11 @@ Luna在隔离Compose中执行新版前端typecheck/build、浏览器TypeScript�
 真实Socket/HTTP场景覆盖正式板、实验5人、治理、观战晋升、服务端确认offline后开局、创建未知结果相同请求重试、跨设备接管。保留空房5分钟/自动继任等未运行项，不把列表、公共状态壳和开局等价为完整对局验证。
 
 这仍不是全项目完成证据：完整对局行动、信息侧栏、多局链与最终同源镜像尚未验收。
+
+## F04/F05 增量证据
+
+行动模型与回执跟踪增量16例通过；03-actions组件夹具Chromium3/3、WebKit3/3，报告results-f04-actions-{chromium,webkit}.json。覆盖18类意图结构、选目标不发送、重复目标、只读、未知结果与原请求重试；这些是组件契约证据，不代表18类真实玩法全部执行。
+
+04-night-actions真实后端五人实验局Chromium1/1（35.7秒）、WebKit1/1（40.2秒），报告results-f04-real-night-{chromium,webkit}.json。守护响应accepted且submissionState对应本局/窗口/请求；服务端固定守护窗口结束后，死神同一目标两次攻击的方案获accepted，latest/effective保留重复目标。没有手工修改引擎阶段。此项仍不覆盖完整13人对局或连续两局。
+
+新增席位边界断言发现桌面环形卡片超出舞台左边界约8.6px；修复为按卡片宽度预留边距及增大最小环形高度。修复后03-actions两浏览器各3/3通过，5/13/26/64席位的完整stage-seat（包括工具条）均在舞台内，报告results-f04-layout-fixed-{chromium,webkit}.json。02房间回归两浏览器各3/3（27.3秒/32.9秒），报告results-f04-rooms-regression-{chromium,webkit}.json。新版类型检查、构建及浏览器TS通过；未重跑真实04或旧全量E2E。
