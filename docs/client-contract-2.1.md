@@ -24,6 +24,8 @@ Room 的 roomId 与房间码跨局不变。memberId 表示当前房间成员，�
 
 聊天使用 clientMessageId，返回与 Socket 快照相同的 messageId。乐观消息以 clientMessageId 关联，messageId 去重；不能把一次 HTTP 超时显示为肯定发送失败。聊天 cursor 只在当前有权读取的 game/channel 内排序，不跨局比较。
 
+成功聊天按 gameId+本人 playerId+clientMessageId 保存原回执。相同完整载荷重试返回原201回执，不重复发送或消耗新消息频率额度；不同载荷复用ID返回409 request_id_reused。重试仍需当前本人控制权；新设备接管后旧会话不能读取旧回执。新一局重新计算，不继承上一局记录。审计库保存 messageId/clientMessageId，复盘沿用原 messageId；审计整数id不作为实时频道游标。
+
 ## Socket 与同步
 
 Socket.IO 路径 `/api/v2/socket.io`，握手 auth 传 roomId。`view_updated` 发送完整授权快照。每个账号+roomId 的 viewVersion 单调递增，只计其可见内容变化；serverTime 自身变化不增加版本。重连后取完整快照，拒绝同 roomId 的旧版本；gameId 变化时清除旧角色、草稿、窗口、消息和提交状态。

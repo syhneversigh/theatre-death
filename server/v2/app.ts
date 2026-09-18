@@ -265,19 +265,26 @@ export function createV2App(deps: V2Deps) {
     res.json(room.receipts.lookup(gameId, id, textField(req.params.requestId, 'request_id', 1, 80)));
   });
   router.post('/rooms/:code/chat', async (req, res) => {
-    const s = limited(req, 'chat', 5, 2500); const room = roomFor(req);
-    const message = await directory.mutate(room, () => {
-      requireMatch(room, matchId(req)); const id = player(room, s); const runtime = room.runtime!;
-      const snapshot = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now());
-      const channel = req.body?.channel;
-      if (channel !== 'public' && channel !== 'faction') throw new ApiError(400, 'invalid_channel');
-      if (!(channel === 'public' ? snapshot.capabilities?.canPostPublic : snapshot.capabilities?.canPostFaction)) throw new ApiError(403, 'chat_forbidden');
-      const text = textField(req.body?.text, 'text', 1, 500).trim();
-      if (!text) throw new ApiError(400, 'invalid_text');
-      const message = { id: runtime.nextMessageId++, messageId: randomUUID(), clientMessageId: textField(req.body?.clientMessageId, 'client_message_id', 1, 80), channel: channel as 'public' | 'faction', senderId: id, text, at: clock.now(), eventSeq: runtime.state!.eventSeq };
-      runtime.chat.push(message); registry.logMessage(runtime, message); return message;
+    const s = session(req); const room = roomFor(req); const gameId = matchId(req);
+    const receipt = await directory.mutate(room, () => {
+      requireMatch(room, gameId); const current = session(req); const id = player(room, current); const runtime = room.runtime!;
+      const clientMessageId = textField(req.body?.clientMessageId, 'client_message_id', 1, 80);
+      return room.chatReceipts.execute(gameId, id, clientMessageId, req.body, () => {
+        limited(req, 'chat', 5, 2500);
+        const snapshot = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now());
+        const channel = req.body?.channel;
+        if (channel !== 'public' && channel !== 'faction') throw new ApiError(400, 'invalid_channel');
+        if (!(channel === 'public' ? snapshot.capabilities?.canPostPublic : snapshot.capabilities?.canPostFaction)) throw new ApiError(403, 'chat_forbidden');
+        const text = textField(req.body?.text, 'text', 1, 500).trim();
+        if (!text) throw new ApiError(400, 'invalid_text');
+        const message = { id: runtime.nextMessageId, messageId: randomUUID(), clientMessageId, channel: channel as 'public' | 'faction', senderId: id, text, at: clock.now(), eventSeq: runtime.state!.eventSeq };
+        // Persist before changing the in-memory stream; a failed write can safely retry.
+        registry.logMessage(runtime, message); runtime.nextMessageId++; runtime.chat.push(message);
+        return { gameId, channel: message.channel, message: snapshots.read(room, current).chat[message.channel].find((m) => m.messageId === message.messageId)! };
+      });
     }, s);
-    res.status(201).json({ gameId: room.gameId, channel: message.channel, message: snapshots.read(room, s).chat[message.channel].find((m) => m.messageId === message.messageId) });
+    requireMatch(room, gameId); player(room, session(req));
+    res.status(201).json(receipt);
   });
   router.post('/rooms/:code/second-screen/invitations', async (req, res) => { const s = intent(req); limited(req, 'screen', 10, 60_000); res.status(201).json(await grants.invite(roomFor(req), s, matchId(req))); });
   router.post('/rooms/:code/second-screen/redeem', async (req, res) => { const s = intent(req); limited(req, 'screen', 10, 60_000); res.json(await grants.redeem(roomFor(req), s, matchId(req), textField(req.body?.token, 'token'))); });

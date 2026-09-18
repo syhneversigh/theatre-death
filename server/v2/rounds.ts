@@ -5,6 +5,7 @@ import type { RoomGovernance } from './governance.ts';
 import type { StableRoom } from './stable-room.ts';
 import { requireMatch } from './screen-grants.ts';
 import { ApiError } from './errors.ts';
+import { ChatReceipts } from './chat-receipts.ts';
 
 export class RoomRounds {
   readonly directory: RoomDirectory;
@@ -22,6 +23,7 @@ export class RoomRounds {
       room.runtime = null; room.access = null; room.participants.clear();
       room.matchStartedAt = null; room.matchEndedAt = null;
       room.receipts = new ReceiptStore();
+      room.chatReceipts = new ChatReceipts();
       room.submissions.clear();
       for (const member of room.members.values()) {
         member.ready = false;

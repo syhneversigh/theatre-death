@@ -17,7 +17,8 @@
 | 08c HTTP与维护接入 | 增量通过 | HTTP A 8例；真实公告前夜死者报名/发言/语音许可/投票/当选到公告1例；观战/维护10例；auth5+race1；目录与旧计时器回归12例。最终容器typecheck通过。旧join/watch已无入口；全局当前房间、logout区别、自然7天过期、媒体mock撤销、空房跨房清理均验证。未测外部LiveKit |
 | 09a 命令回执与提交状态 | 增量通过 | command-receipts-api3 + receipts6 + v2-api3 + room-rounds1，13/13与typecheck。阻塞队列下pending、同意图并发只执行一次、排队越过截止、跨人查询隔离、私屏请求ID隐藏、当前窗口提交状态和复盘保留。补强随机合法目标/完成后冲突/二次合法提交后单文件3/3 |
 | 09b 房间操作幂等 | 增量通过 | Luna：operation-receipts4 + room-operation-api8 + v2-api3 + contract-http-lifecycle3 + v2-spectators-api4，共22例，typecheck通过。并发创建、ready/start重放、离开/解散后回执、旧控制设备不能获取邀请、路由别名均覆盖；语音凭证保持实时。复盘是构造fixture，503 HTTP重试未单独覆盖 |
-| 09c–13 | 待实施 | 聊天去重、账号迁移、头像、资料目录与契约验收、候选构建/容量/切换尚未完成 |
+| 09c 聊天确认及审计关联 | 增量通过 | Luna：chat-receipts-api6 + audit-migration2 + v2-api3 + review2 + room-rounds1，共14例与typecheck。补强review重试/新消息拒绝、复盘ID保留、旧gameId拒绝后单文件6/6及typecheck。实际Socket/HTTP确认一致，临时文件验证旧审计迁移重开；新局使用构造终局，不替代真实玩法验收 |
+| 09d–13 | 待实施 | 团队面板有效方案、账号迁移、头像、资料目录与契约验收、候选构建/容量/切换尚未完成 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -49,3 +50,5 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 09a基线db9aa4f，Docker只读源码：receipts.ts SHA256 be1e1c56232fc9aeab0cbb8c7df4b4947a9211a4d60a75fefa416eea8b93c6ae；app.ts b78e8f7fc1665f8171c2a6ec509c99b30c3775606b04d0504fa1007fd5ec7ba6；最终新增测试8ca39ff76e9abf1e520ba3a3bb7dad45192527bd4d449fa48fa7d33fffdb19b4。查询不执行命令；完整内容指纹区别数值/字符串/null并限制异常嵌套，避免错误重放。
 
 09b基线f30952d，使用上述Docker只读挂载入口运行5个指定文件（operation-receipts、room-operation-api、v2-api、contract-http-lifecycle、v2-spectators-api）及typecheck。新测试SHA256分别为e3a058f21e28f00999cc419f89fdbf5ed487b137c0c64181d199758f248abfa9、d212592038cf8f819be68cd6dc0e8f832df032ec64326f208daa8d32221269315。缓存键包含账号、房间及操作内容；429/503准入失败不固定为永久回执，服务端异常回执保留以避免重复执行。
+
+09c基线a907806，指定Docker命令运行上表5文件，随后仅chat-receipts-api复跑。宿主/只读容器源码一致：app.ts 9be1f0a53e78349e8e64498d002fcadf19f16873098d6e39cc9a1dbbcbf4e654；log-store.ts ca60714bd9670558a7d052d1913fda6ae9f52e34c1df2ccfdcd8bfcfcb763cd1；chat-receipts.ts 5431ba032af5d8b7800e3024dd3b43950b577f98b8dd73d65e17bac9d8c1cf85。最终测试hash 67d0a693ed77eb8261cdde5acefecb40c251c95a8855917f8054a8d07a4d3bfe（提交前仅删除一处行末空格）；审计测试8c56fac5bc828d81b7451041e2dc8312943f64c49ba7c60c8e7f88f95f27a51a。

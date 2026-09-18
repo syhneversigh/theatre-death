@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 const selection = new Set();
 const mappings = [
+  [/^server\/v2\/chat-receipts\.ts$/, ['chat-receipts-api', 'v2-api', 'room-rounds']],
   [/^server\/v2\/operation-receipts\.ts$/, ['operation-receipts', 'room-operation-api', 'v2-api']],
   [/^server\/receipts\.ts$/, ['receipts', 'command-receipts-api', 'v2-api']],
   [/^server\/v2\/room-realtime\.ts$/, ['room-realtime', 'contract-snapshots', 'member-presence']],

@@ -45,6 +45,8 @@ export interface LogStore {
 
 export function createLogStore(path: string): LogStore {
   const db = new DatabaseSync(path);
+  const schema = Number(db.prepare('PRAGMA user_version').get()!.user_version);
+  if (schema > 1) { db.close(); throw new Error('unsupported_audit_schema'); }
   db.exec(`
     CREATE TABLE IF NOT EXISTS events (
       game_id TEXT NOT NULL,
@@ -83,17 +85,24 @@ export function createLogStore(path: string): LogStore {
     CREATE INDEX IF NOT EXISTS matches_room ON matches(room_id);
   `);
 
+  if (schema === 0) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.exec('ALTER TABLE messages ADD COLUMN message_id TEXT; ALTER TABLE messages ADD COLUMN client_message_id TEXT; PRAGMA user_version = 1; COMMIT');
+    } catch (error) { db.exec('ROLLBACK'); db.close(); throw error; }
+  }
+
   const insertEvent = db.prepare(
     'INSERT OR REPLACE INTO events (game_id, seq, day_number, stage, type, payload, visibility) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
   const insertMessage = db.prepare(
-    'INSERT OR REPLACE INTO messages (game_id, id, channel, sender_id, text, at, event_seq) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT OR REPLACE INTO messages (game_id, id, channel, sender_id, text, at, event_seq, message_id, client_message_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const selectEvents = db.prepare(
     'SELECT seq, day_number, stage, type, payload, visibility FROM events WHERE game_id = ? AND seq > ? ORDER BY seq ASC',
   );
   const selectMessages = db.prepare(
-    'SELECT id, channel, sender_id, text, at, event_seq FROM messages WHERE game_id = ? AND id > ? ORDER BY id ASC',
+    'SELECT id, channel, sender_id, text, at, event_seq, message_id, client_message_id FROM messages WHERE game_id = ? AND id > ? ORDER BY id ASC',
   );
   const insertRoom = db.prepare(
     'INSERT OR REPLACE INTO rooms (game_id, code, created_at, ruleset) VALUES (?, ?, ?, ?)',
@@ -139,6 +148,8 @@ export function createLogStore(path: string): LogStore {
         message.text,
         message.at,
         message.eventSeq,
+        message.messageId ?? null,
+        message.clientMessageId ?? null,
       );
     },
     recordRoom(room) {
@@ -176,6 +187,8 @@ export function createLogStore(path: string): LogStore {
         text: row.text as string,
         at: row.at as number,
         eventSeq: row.event_seq as number,
+        ...(row.message_id === null ? {} : { messageId: row.message_id as string }),
+        ...(row.client_message_id === null ? {} : { clientMessageId: row.client_message_id as string }),
       }));
     },
     close() {

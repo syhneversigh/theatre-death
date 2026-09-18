@@ -9,6 +9,7 @@ import { ReceiptStore } from '../receipts.ts';
 import type { AccountStore } from './account-store.ts';
 import { RoomAccess } from './access.ts';
 import { ApiError } from './errors.ts';
+import { ChatReceipts } from './chat-receipts.ts';
 
 export const newId = (prefix: string) => `${prefix}_${randomBytes(16).toString('hex')}`;
 export interface ActiveMember {
@@ -55,6 +56,7 @@ export class StableRoom {
   matchEndedAt: number | null = null;
   access: RoomAccess | null = null;
   receipts = new ReceiptStore();
+  chatReceipts = new ChatReceipts();
   readonly submissions = new Map<string, Map<string, SubmissionDTO>>();
   emptyDeadline: number | null = null;
   dissolved = false;
@@ -85,6 +87,7 @@ export class StableRoom {
     this.runtime = runtime;
     this.matchStartedAt = this.deps.clock.now(); this.matchEndedAt = null;
     this.receipts = new ReceiptStore();
+    this.chatReceipts = new ChatReceipts();
     this.submissions.clear();
     this.participants.clear();
     const access = new RoomAccess(runtime, this.deps.accounts, () => this.deps.clock.now(), (identity) => this.deps.revokeMedia(runtime.gameId, identity));
