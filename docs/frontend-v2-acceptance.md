@@ -54,3 +54,13 @@ Luna在隔离Compose中执行新版前端typecheck/build、浏览器TypeScript�
 04-night-actions真实后端五人实验局Chromium1/1（35.7秒）、WebKit1/1（40.2秒），报告results-f04-real-night-{chromium,webkit}.json。守护响应accepted且submissionState对应本局/窗口/请求；服务端固定守护窗口结束后，死神同一目标两次攻击的方案获accepted，latest/effective保留重复目标。没有手工修改引擎阶段。此项仍不覆盖完整13人对局或连续两局。
 
 新增席位边界断言发现桌面环形卡片超出舞台左边界约8.6px；修复为按卡片宽度预留边距及增大最小环形高度。修复后03-actions两浏览器各3/3通过，5/13/26/64席位的完整stage-seat（包括工具条）均在舞台内，报告results-f04-layout-fixed-{chromium,webkit}.json。02房间回归两浏览器各3/3（27.3秒/32.9秒），报告results-f04-rooms-regression-{chromium,webkit}.json。新版类型检查、构建及浏览器TS通过；未重跑真实04或旧全量E2E。
+
+## F06 当前增量证据
+
+chat tracker8例通过（含补强断言）：权限与UTF-16边界、原载荷重试、同sender/同channel对账、错误回执、迟到结果与dispose。根typecheck及新版typecheck通过。
+
+05-information的初版四场景已在Chromium4/4（3.0秒）、WebKit4/4（7.4秒）通过，报告results-f06-information-{chromium,webkit}.json，Browser TypeScript通过。实际覆盖发送字段、纯文本、IME/Enter/ShiftEnter、500字符输入、unknown重试、只读/禁写、跨scope草稿清理、聊天早历史与滚动/草稿保持、规则搜索/章节及弹层焦点。主代理逐行审阅后要求补充事件早历史、消息重复后的唯一性断言及公共/私人事件流隔离，补测尚在运行。
+
+上述05中的chat/view均为page.route拦截，只证明界面行为，真实后端聊天收发尚未验证。WebKit规则弹层截图已审阅，正文与表格在手机视口可读；全文章节标题出现重复，列入F08显示细节修整。
+
+补强终轮05 Chromium4/4（2.8秒）、WebKit4/4（6.8秒），同名固定报告已更新，Browser TypeScript通过。补充实际断言：事件早历史显示、相同DTO的messageId唯一性、两条逆序输入事件按cursor呈现、公共与私人事件同cursor不串流。仍不把page.route夹具当成真实聊天链路。

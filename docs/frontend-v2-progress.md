@@ -4,7 +4,7 @@
 
 ## 当前断点
 
-F03已提交6cdcb89并合入frontend/v2。当前分支frontend/f04-actions：对局舞台、身份/玩家/事件弹层、18类行动参数、提交与查询回执、只读信息侧栏已接入，正在验证；聊天发送、规则搜索、完整复盘与第二屏授权操作仍待F06/F07。独立前端http://localhost:5173，仅隔离数据；完整UI验收未完成。个人显示偏好及死亡动效在F08实现。
+F04/F05检查点c5d667b已合入frontend/v2。当前分支frontend/f06-information：公屏/阵营聊天、原消息重试与快照对账、规则搜索及当前角色/阶段章节入口已接入，类型检查通过，聊天增量测试正在补充；尚未完成F06浏览器验收。独立前端http://localhost:5173，仅隔离数据；完整UI验收未完成。完整复盘与第二屏授权操作待F07，个人显示偏好及死亡动效待F08。
 
 ## 里程碑
 
@@ -16,7 +16,7 @@ F03已提交6cdcb89并合入frontend/v2。当前分支frontend/f04-actions：对
 | F03 首页大厅 | 核心通过 | 配置/权限/标题9例；房间Chromium3+WebKit3；账户回归6；空房5分钟/自动继任等补充分支留F09 |
 | F04 对局结构 | 实施/验证中 | 动态环形/网格、公开HUD、身份/信息弹层、手机固定行动条；未以fixture冒充真实玩法 |
 | F05 全部行动 | 实施/验证中 | 首版模型与tracker13例通过；新增快照对账竞态补验及UI契约场景进行中 |
-| F06 信息规则 | 未开始 | |
+| F06 信息规则 | 实施中 | 聊天/规则搜索接入，增量测试中，未作浏览器完成声明 |
 | F07 观战复盘 | 未开始 | |
 | F08 响应式视觉 | 未开始 | |
 | F09 新 UI 验收 | 未开始 | 不以旧 UI 或后端测试替代 |
@@ -73,3 +73,13 @@ F03已提交6cdcb89并合入frontend/v2。当前分支frontend/f04-actions：对
 - 当前待核对：HUD增加明确的一/二阶段标识；F09异常收口补请求长时间无响应的超时边界，不把timeout当业务失败；最终建立完整同源构建而非交付Vite服务。
 - 审阅后已补HUD第1/2阶段、授权目标生成的发言顺序预览；团队最新草稿/确认名单/effective统一放在行动面板，防止编辑时看不到截止候选。confirm revision补安全正整数校验。已重新冻结等待UI验证，不能将此前13例结果直接称为新版本全部通过。
 - 独立检查发现web服务继承test的NODE_ENV=test；本地Vite resolveConfig显示isProduction=false。F10必须明确区分web开发环境与正式build的NODE_ENV，检查生产产物不含开发入口。此前build通过只证明可编译，不证明生产构建配置正确；尚未修改该配置以免扰动当前冻结测试。
+
+## F06 当前断点
+
+- chat/model.ts集中约束500 UTF-16长度（接口固定上限，bootstrap/catalog尚不暴露该字段）、capability权限、按本sender/clientMessageId对账、按messageId去重和独立channel cursor排序。未知结果保留原始载荷/ID，5xx及429不冒充业务拒绝；授权scope变化后忽略迟到结果。
+- 公屏/阵营区域分别接入ChatChannelView，保留草稿与失败原文、IME候选确认不发送、历史本地分段与手动回到最新。此实现尚待浏览器验证，不能据类型检查推断滚动/未读/IME全部通过。当前sidebar事件流未读与分段回查仍需完善。
+- 完整规则支持纯客户端关键词搜索、稳定chapter ID选择及当前角色/阶段入口；规则来源仍是catalog Markdown。产品代码typecheck:web:v2在Docker通过，Luna正在编写chat tracker增量测试。下一步审阅测试结果，冻结源码、重启web验证新模块后进行F06专项浏览器场景及真实聊天验证。
+- Luna首轮chat tracker8例与根typecheck通过。主代理审阅发现HTTP错sender已有覆盖，但快照同clientMessageId不同sender/channel尚缺，已要求补测，另补500/502与UnknownResult；不可把首轮8例描述成全部隔离边界已验证。查看规则/身份弹层时聊天暂停自动滚动与已读更新。F06尚未提交，也尚未重启开发web加载这一轮模块。
+- 补强后chat tracker仍8例（原场景增加断言）及根typecheck通过；已检查错误sender/channel快照不得确认。事件流新增独立EventHistory：各流cursor排序/去重、60条初始分段、未读/滚动保持。聊天改为固定已加载起点，避免新增消息挤掉正在阅读的最早一条。F06产品依赖已冻结，Luna正在新增05-information专项双浏览器测试，尚无通过结论。
+- 并行准备的features/spectator/{panel,actions}.tsx与features/review/{model,page}.tsx尚未被主界面import，不是F07已完成功能。第二屏生成/兑换/撤销、只读授权窗口/提交状态；复盘独立GET及scope/gameId迟到保护、身份/完整时间线/全部交流/结束返回均已有独立组件，全部通过typecheck:web:v2，仍待接入和F07真实验收。F06测试期间不接入这些模块，避免改变被测版本。
+- 05-information首轮测试误用夜间禁写fixture填草稿，第二轮票型fixture错误替换完整历史；主代理已指出并要求修正测试数据，未据此修改产品。后续要求仍包括消息去重、事件60条分段回查、规则弹层焦点保持及切标签草稿/位置，只有最终实际断言和固定报告才能证明覆盖；当前未记录F06浏览器通过。

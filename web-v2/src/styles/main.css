@@ -234,6 +234,15 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .chat-message { border-bottom: 1px solid #e2e7ed; padding: 13px 0; font-size: 12px; }
 .chat-message strong { font-size: 11px; font-weight: 600; overflow-wrap: anywhere; }
 .chat-message p { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-history { max-height: 330px; overflow-y: auto; overflow-anchor: none; scrollbar-width: thin; }
+.event-history { max-height: 360px; overflow-y: auto; overflow-anchor: none; scrollbar-width: thin; }
+.chat-composer { margin-top: 16px; }
+.chat-composer label { display: grid; gap: 8px; font-size: 12px; }
+.chat-composer textarea { width: 100%; resize: vertical; min-height: 76px; border: 1px solid var(--line); border-radius: 6px; padding: 10px; color: var(--ink); background: #fff; font: inherit; }
+.chat-composer .button-row { justify-content: space-between; }
+.chat-composer small { font-size: 10px; color: var(--muted); }
+.chat-outgoing { margin-top: 10px; padding: 10px; border: 1px dashed var(--line); border-radius: 6px; font-size: 11px; }
+.chat-outgoing p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .team-proposal { border: 1px solid #c8d2df; padding: 13px; border-radius: 7px; margin: 18px 0; }
 .team-proposal h3 { margin-top: 0; }
 .team-proposal > p { font-size: 12px; margin: 10px 0; }
