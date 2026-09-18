@@ -16,6 +16,10 @@ Room 的 roomId 与房间码跨局不变。memberId 表示当前房间成员，�
 
 房间写操作使用 UUID requestId；同一意图重试复用 ID，不同意图生成新 ID。局内操作还必须携带 gameId，命令再带窗口的 windowInstanceId。身份从 Cookie 获取，不能提交 playerId 冒充操作者。旧 gameId 返回 `stale_game`，旧窗口返回 `stale_window`，超时返回 `window_closed`，同 ID 不同内容返回 `request_id_reused`。
 
+建房的请求ID按账号保存；已有房间的管理操作按账号+房间码保存，并把操作名纳入指纹。准备与取消准备、进入与显式接管属于不同意图，要使用不同ID。退出或解散后重试可返回历史成功回执；这不会恢复房间，也不代表历史状态仍然成立，当前状态以最新快照为准。429/503表示尚未接纳，允许稍后同ID重试。
+
+语音凭证与权限同步每次重新检查当前授权，不缓存短期令牌。邀请码回执涉及授权能力，重读时也要求当前本人控制权；已被接管的旧设备不能读到缓存中的邀请码。新的邀请签发需要新的请求ID。
+
 命令结果不明时查询 `GET /rooms/:code/games/:gameId/receipts/:requestId`。`not_seen` 只表示查询执行时尚未看到记录，不能显示“操作失败”；可以原 ID 原载荷重试。`pending` 继续查询；`accepted/rejected` 是已有回执。查询永不重新执行动作，回执保留至当前复盘结束。注册响应丢失应使用用户名密码登录恢复，不盲目重复注册。
 
 聊天使用 clientMessageId，返回与 Socket 快照相同的 messageId。乐观消息以 clientMessageId 关联，messageId 去重；不能把一次 HTTP 超时显示为肯定发送失败。聊天 cursor 只在当前有权读取的 game/channel 内排序，不跨局比较。

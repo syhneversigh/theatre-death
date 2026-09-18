@@ -29,6 +29,7 @@ import { ScreenGrants, requireMatch } from './screen-grants.ts';
 import { RoomSnapshots } from './snapshots.ts';
 import { createRoomRealtime } from './room-realtime.ts';
 import type { ActiveMember, StableRoom } from './stable-room.ts';
+import { OperationReceipts } from './operation-receipts.ts';
 
 export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; secureCookies?: boolean; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
 
@@ -36,6 +37,7 @@ export function createV2App(deps: V2Deps) {
   const { accounts, clock } = deps;
   const access = new Map<string, RoomAccess>();
   const limits = new RateLimits(() => clock.now());
+  const operations = new OperationReceipts();
   const media = new V2Media(deps.voice ?? null, () => clock.now());
   const diagnostics = createDiagnostics();
   let closing = false;
@@ -138,6 +140,42 @@ export function createV2App(deps: V2Deps) {
     if (member.kind !== 'formal' || !seat || !room.access?.resolve(s)) throw new ApiError(403, 'seat_control_required');
     return seat.playerId;
   };
+  const operationPaths: Array<[string, string]> = [
+    ['/rooms', 'create'],
+    ...['enter', 'takeover', 'promote', 'leave', 'ready', 'start', 'transfer-host', 'kick', 'dissolve', 'end-review', 'second-screen/invitations', 'second-screen/redeem', 'second-screen/revoke'].map((operation): [string, string] => ['/rooms/:code/' + operation, operation]),
+  ];
+  // Registered on the same route patterns as handlers, so encoded/case/trailing-slash
+  // aliases accepted by Express cannot bypass idempotency.
+  for (const [path, operation] of operationPaths) router.post(path, async (req, res, next) => {
+    try {
+      const s = intent(req);
+      const code = req.params.code === undefined ? null : String(req.params.code).toUpperCase();
+      if (code !== null && !/^[A-Z2-9]{6}$/.test(code)) throw new ApiError(404, 'room_not_found');
+      const authorizeResponse = () => {
+        const current = session(req);
+        // Never replay a capability-bearing invitation to a device that lost control.
+        if (operation === 'second-screen/invitations') {
+          const room = roomFor(req); requireMatch(room, matchId(req)); player(room, current);
+        }
+      };
+      authorizeResponse();
+      const ticket = operations.reserve(s.userId, code === null ? 'create' : 'room:' + code, textField(req.body.requestId, 'request_id', 1, 80), { operation, body: req.body });
+      if (!ticket.owner) {
+        const response = await ticket.promise;
+        authorizeResponse();
+        res.status(response.status).json(structuredClone(response.body));
+        return;
+      }
+      const send = res.json.bind(res);
+      res.json = (body: unknown) => {
+        ticket.finish({ status: res.statusCode, body });
+        if (res.statusCode < 400) authorizeResponse();
+        return send(body);
+      };
+      limited(req, 'room-write', 30, 2000);
+      next();
+    } catch (error) { next(error); }
+  });
   router.post('/rooms', async (req, res) => {
     const s = limited(req, 'create', 5, 60_000); intent(req);
     if (req.body?.presetId !== undefined && req.body.presetId !== 'default-13') throw new ApiError(400, 'invalid_preset');
