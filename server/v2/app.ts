@@ -30,6 +30,7 @@ import { RoomSnapshots } from './snapshots.ts';
 import { createRoomRealtime } from './room-realtime.ts';
 import type { ActiveMember, StableRoom } from './stable-room.ts';
 import { OperationReceipts } from './operation-receipts.ts';
+import { bootstrap, catalog } from './catalog.ts';
 
 export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; secureCookies?: boolean; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
 
@@ -109,6 +110,8 @@ export function createV2App(deps: V2Deps) {
     next();
   });
   app.use('/api/v2/auth', authRouter(accounts, deps.secureCookies ?? false, revokeUser, deps.cookieName));
+  app.get('/api/v2/bootstrap', (_req, res) => res.json(bootstrap(!!deps.voice, false)));
+  app.get('/api/v2/catalog', (_req, res) => res.json(catalog()));
   app.get('/healthz', (_req, res) => res.json({ status: 'ok', apiVersion: 2, contractVersion: CONTRACT_VERSION, rulesVersion: '2.0' }));
   app.get('/', (_req, res) => res.json({ service: 'theater-death-v2', api: '/api/v2', contractVersion: CONTRACT_VERSION, ui: 'not-included' }));
   const router = express.Router();

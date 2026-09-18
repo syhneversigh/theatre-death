@@ -4,6 +4,7 @@ x-source: &source
   working_dir: /app
   volumes:
     - ../contracts:/app/contracts:ro
+    - ../docs:/app/docs:ro
     - ../server:/app/server:ro
     - ../engine:/app/engine:ro
     - ../visibility:/app/visibility:ro
