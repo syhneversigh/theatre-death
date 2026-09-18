@@ -11,6 +11,8 @@ export interface StoredEvent {
 }
 
 export interface StoredMessage {
+  readonly messageId?: string;
+  readonly clientMessageId?: string;
   readonly id: number;
   readonly channel: string;
   readonly senderId: string;
