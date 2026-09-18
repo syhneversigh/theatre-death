@@ -1,7 +1,7 @@
 name: backend-v2-incremental
 on:
   pull_request:
-    branches: [main, backend/v2]
+    branches: [main, backend/v2, backend/client-contract-2.1]
 permissions:
   contents: read
 jobs:
@@ -17,4 +17,5 @@ jobs:
         shell: bash
         run: |
           mapfile -t changed < <(git diff --name-only "$BASE_SHA" HEAD)
-          docker compose -f deploy/compose.v2.yml run --rm --no-deps test node scripts/select-tests.mjs "${changed[@]}"
+          docker compose -f deploy/compose.contract.yml build test
+          docker compose -f deploy/compose.contract.yml run --rm --no-deps test node scripts/select-tests.mjs "${changed[@]}"

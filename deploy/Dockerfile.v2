@@ -1,5 +1,8 @@
 # Build deploy/Dockerfile.dependencies first. Record its manifest with the candidate.
 FROM theater-death-contract-deps:sharp0354-ajv820
+ARG VCS_REF=unrecorded
+LABEL org.opencontainers.image.revision=$VCS_REF
+LABEL org.opencontainers.image.version="2.1.0-rc.1"
 WORKDIR /app
 COPY package-lock.json /tmp/v2-lock.json
 RUN node -e "const fs=require('fs');if(JSON.stringify(JSON.parse(fs.readFileSync('/tmp/v2-lock.json')))!==JSON.stringify(JSON.parse(fs.readFileSync('package-lock.json'))))throw Error('Refresh dependency image for changed lockfile')"

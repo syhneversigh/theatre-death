@@ -40,6 +40,8 @@ docker compose -f deploy/compose.contract.yml --profile app up -d app
 
 依赖层切换使用仓库的 `deploy/Dockerfile.dependencies` 与现有锁文件；`docker compose -f deploy/compose.contract.yml build test` 仅构建依赖，不执行候选全量门禁。候选才使用 `deploy/Dockerfile.v2`。增量入口会检查容器内锁文件和只读工作树锁的语义一致性，不能把改过的package挂到旧依赖镜像后忽略检查。
 
+2.1功能PR使用backend-v2-check增量工作流；只有手动运行backend-v2-candidate时才执行候选完整单元/API镜像门禁，不自动推送镜像或部署。原仓库旧版main发布工作流保留，不能将其输出当作2.1后端候选。镜像revision标签通过VCS_REF记录真实源码提交；本地候选同样传入完整SHA。
+
 采用输入像素上限和严格无效数据处理，图片任务另设并发上限。Sharp的concurrency控制每张图片的处理线程，不等同于请求并发限制。metadata中的pages可识别WebP多帧；PNG动画还需检查APNG控制块，不能假设pages覆盖所有格式。[构造参数](https://sharp.pixelplumbing.com/api-constructor/) · [输入元数据](https://sharp.pixelplumbing.com/api-input/) · [线程控制](https://sharp.pixelplumbing.com/api-utility/)
 
 输出重编码为256×256 WebP，不调用keepMetadata/withMetadata；Sharp默认移除元数据。验证仍须覆盖伪装格式、过量像素、动画以及写入失败后旧引用保留。[输出元数据策略](https://sharp.pixelplumbing.com/api-output/#keepmetadata)
