@@ -29,11 +29,18 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
       if (store.byName(account.username)?.passwordHash !== account.passwordHash) throw new ApiError(401, 'invalid_credentials');
       return store.createSession(account.id);
     });
-    res.cookie(cookieName, token, cookieOptions).json({ userId: account.id, expiresAt: session.expiresAt });
+    res.cookie(cookieName, token, cookieOptions).json({ ...store.profile(account.id), expiresAt: session.expiresAt });
   };
+  router.post('/invitations/check', (req, res) => {
+    if (!limits.allow(`invite-check:${req.ip}`, 30, 60_000)) throw new ApiError(429, 'rate_limited');
+    const invitation = textField(req.body?.invitation, 'invitation');
+    if (!store.validInvite(invitation, 'register')) throw new ApiError(403, 'invalid_invitation');
+    res.json({ valid: true });
+  });
   router.post('/register', async (req, res) => {
     if (!limits.allow(`register:${req.ip}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
     const username = textField(req.body?.username, 'username', 3, 32).toLowerCase();
+    if (!/^[a-z0-9_]{3,32}$/.test(username)) throw new ApiError(400, 'invalid_username');
     const invitation = textField(req.body?.invitation, 'invitation');
     const password = req.body?.password; validatePassword(password);
     if (!store.validInvite(invitation, 'register')) throw new ApiError(403, 'invalid_invitation');
@@ -50,7 +57,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
   });
   router.get('/me', (req, res) => {
     const session = requireAccount(store, req, cookieName);
-    res.json({ userId: session.userId, expiresAt: session.expiresAt });
+    res.json({ ...store.profile(session.userId), expiresAt: session.expiresAt });
   });
   router.post('/logout', async (req, res) => {
     const session = requireAccount(store, req, cookieName);

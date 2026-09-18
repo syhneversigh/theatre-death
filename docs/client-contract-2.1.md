@@ -6,6 +6,8 @@
 
 API 前缀 `/api/v2`，规则版本 `2.0`，契约版本 `2.1`。账户名只读并作为显示名。Cookie 由服务端设置，浏览器不能读取令牌，也不把令牌写入 localStorage。`/auth/me` 查询当前登录身份；登录不自动接管其他设备的房间。
 
+注册、登录与/auth/me统一返回 `{userId,username,avatarUrl,profileVersion,expiresAt}`。账号输入3–32位英文字母、数字、下划线，统一转小写保存和显示；密码12–128个UTF-16代码单元（与JavaScript字符串.length一致），登录仍验证原密码。邀请码预检POST `/auth/invitations/check`，提交invitation；成功返回valid=true，不消费。无效、已使用、过期、撤销或密码重置用途的token均返回403 invalid_invitation，注册事务还会重新校验。
+
 Room 的 roomId 与房间码跨局不变。memberId 表示当前房间成员，显式离开再进入产生新 memberId。gameId/playerId 只属于一局；lobby 时 gameId=null。角色、座位由开局分配。参与过当前局的账号返回只能恢复本人，不能通过公开观战获得其他玩家视角。
 
 本人房间列表中，activeHere 表示当前会话可以访问该成员身份；controlling 只表示正式成员的控制会话，观众为false。观众是否只读与观察对象由viewer明确表达，不能把“可以读取”当成“可以操作”。

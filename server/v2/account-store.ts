@@ -6,6 +6,7 @@ import type { Profile } from '../../contracts/v2.ts';
 const token = () => randomBytes(32).toString('base64url');
 const digest = (raw: string) => createHash('sha256').update(raw).digest('hex');
 const WEEK = 7 * 86400_000;
+export const ACCOUNT_SCHEMA_VERSION = 2;
 export interface Account { id: string; username: string; passwordHash: string }
 export interface AccountSession { id: string; userId: string; expiresAt: number }
 
@@ -19,7 +20,7 @@ export class AccountStore {
     this.db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
     this.db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)');
     const version = this.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()?.version ?? 0;
-    if (Number(version) > 1) { this.db.close(); throw new Error('Unsupported account schema version'); }
+    if (Number(version) > ACCOUNT_SCHEMA_VERSION) { this.db.close(); throw new Error('Unsupported account schema version'); }
     if (version === 0) this.transaction(() => {
       this.db.exec(`
         CREATE TABLE accounts (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at INTEGER NOT NULL);
@@ -27,6 +28,14 @@ export class AccountStore {
         CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES accounts(id), expires_at INTEGER NOT NULL);
         CREATE INDEX sessions_user ON sessions(user_id);
         INSERT INTO schema_migrations VALUES(1);
+      `);
+    });
+    if (Number(version) < 2) this.transaction(() => {
+      this.db.exec(`
+        CREATE TABLE avatar_assets (id TEXT PRIMARY KEY, created_at INTEGER NOT NULL, unreferenced_at INTEGER);
+        ALTER TABLE accounts ADD COLUMN avatar_id TEXT REFERENCES avatar_assets(id);
+        ALTER TABLE accounts ADD COLUMN profile_version INTEGER NOT NULL DEFAULT 0;
+        INSERT INTO schema_migrations VALUES(2);
       `);
     });
   }
@@ -40,9 +49,9 @@ export class AccountStore {
     return row ? { id: String(row.id), username: String(row.username), passwordHash: String(row.password_hash) } : null;
   }
   profile(userId: string): Profile {
-    const row = this.db.prepare('SELECT username FROM accounts WHERE id=?').get(userId);
+    const row = this.db.prepare('SELECT username,avatar_id,profile_version FROM accounts WHERE id=?').get(userId);
     if (!row) throw new ApiError(404, 'account_not_found');
-    return { userId, username: String(row.username), avatarUrl: null, profileVersion: 0 };
+    return { userId, username: String(row.username), avatarUrl: row.avatar_id === null ? null : `/api/v2/avatars/${row.avatar_id}`, profileVersion: Number(row.profile_version) };
   }
   invite(purpose: 'register' | 'reset' = 'register', username?: string, ttl = purpose === 'register' ? WEEK : 1800_000) {
     const user = purpose === 'reset' ? this.byName(username ?? '') : null;
@@ -64,7 +73,7 @@ export class AccountStore {
       if (!invite) throw new ApiError(403, 'invalid_invitation');
       if (this.byName(normalized)) throw new ApiError(409, 'username_taken');
       const account = { id: token(), username: normalized, passwordHash };
-      this.db.prepare('INSERT INTO accounts VALUES(?,?,?,?)').run(account.id, normalized, passwordHash, this.now());
+      this.db.prepare('INSERT INTO accounts(id,username,password_hash,created_at) VALUES(?,?,?,?)').run(account.id, normalized, passwordHash, this.now());
       this.db.prepare('UPDATE invitations SET used_at=? WHERE id=?').run(this.now(), invite.id);
       return account;
     });

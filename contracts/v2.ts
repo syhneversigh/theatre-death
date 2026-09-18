@@ -8,6 +8,7 @@ export type RoomPhase = 'lobby' | 'playing' | 'review';
 export type MemberKind = 'formal' | 'public_spectator' | 'private_spectator';
 export type Presence = 'online' | 'reconnecting' | 'offline';
 export interface Profile { userId: string; username: string; avatarUrl: string | null; profileVersion: number }
+export interface AuthMe extends Profile { expiresAt: number }
 export interface RoomMemberDTO extends Profile {
   memberId: string;
   kind: MemberKind;
