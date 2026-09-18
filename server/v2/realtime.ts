@@ -5,6 +5,7 @@ import type { Room } from '../rooms.ts';
 import { gameView, type ViewIdentity } from './view.ts';
 import { publishedState } from '../../visibility/knowledge.ts';
 import { canReadRoomMessage } from '../../visibility/rooms.ts';
+import { HEARTBEAT_INTERVAL_MS, HEARTBEAT_TIMEOUT_MS } from './presence.ts';
 
 export interface ResolvedViewer { room: Room; identity: ViewIdentity; principalId: string; mediaIdentity: string }
 export type ResolveViewer = (cookie: string, gameId: string) => ResolvedViewer | null;
@@ -49,7 +50,7 @@ export function createV2Realtime(resolve: ResolveViewer, now: () => number, orig
   return {
     broadcaster, refresh,
     attachV2(server: HttpServer) {
-      io = new IOServer(server, { path: '/api/v2/socket.io', allowRequest(req, callback) { callback(null, !req.headers.origin || req.headers.origin === origin); } });
+      io = new IOServer(server, { path: '/api/v2/socket.io', pingInterval: HEARTBEAT_INTERVAL_MS, pingTimeout: HEARTBEAT_TIMEOUT_MS, allowRequest(req, callback) { callback(null, !req.headers.origin || req.headers.origin === origin); } });
       io.use((socket, next) => {
         const gameId: unknown = socket.handshake.auth.gameId;
         const cookie = socket.handshake.headers.cookie ?? '';
