@@ -45,12 +45,12 @@ export class MemberPresence {
             this.pending.delete(member.memberId);
             if (room.dissolved || room.members.get(member.userId) !== member || member.epoch !== epoch || member.connections.size > 0 || member.disconnectAt !== deadline) return;
             member.presence = 'offline'; member.disconnectAt = null;
-            this.directory.deps.changed(room);
+            this.directory.deps.changed(room, { disconnectedMemberId: member.memberId });
           });
         });
         this.pending.set(member.memberId, handle);
       }
-      this.directory.deps.changed(room);
+      this.directory.deps.changed(room, member.presence === 'offline' ? { disconnectedMemberId: member.memberId } : undefined);
     });
   }
   close() {

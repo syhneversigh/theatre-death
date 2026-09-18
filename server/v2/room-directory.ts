@@ -6,8 +6,9 @@ import { ApiError } from './errors.ts';
 import { StableRoom, newId, type ActiveMember, type StableRoomDeps } from './stable-room.ts';
 
 export interface DirectoryDeps extends StableRoomDeps {
-  changed: (room: StableRoom) => void;
+  changed: (room: StableRoom, event?: { disconnectedMemberId: string }) => void;
   control: (room: StableRoom, sessionId: string | null, reason: ControlReason) => void;
+  removed?: (room: StableRoom) => void;
 }
 
 /** Membership transactions always acquire the directory queue before a room queue.
