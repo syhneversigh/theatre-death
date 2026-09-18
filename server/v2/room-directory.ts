@@ -89,9 +89,10 @@ export class RoomDirectory {
     return member;
   }
   enter(room: StableRoom, session: AccountSession, takeover = false): Promise<ActiveMember> {
-    return this.mutate(room, () => this.enterNow(room, session, takeover));
+    return this.mutate(room, () => this.enterWithinQueue(room, session, takeover));
   }
-  private enterNow(room: StableRoom, session: AccountSession, takeover: boolean): ActiveMember {
+  /** For atomic grant redemption; caller must already hold directory and room queues. */
+  enterWithinQueue(room: StableRoom, session: AccountSession, takeover = false): ActiveMember {
     this.checkSession(session); this.checkCurrent(session.userId, room.roomId);
     const existing = room.members.get(session.userId);
     if (existing) {

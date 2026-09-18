@@ -10,7 +10,8 @@
 | 04 连接状态与宽限 | 增量通过 | Luna：member-presence5、room-membership5、v2-realtime5；typecheck通过。首轮fake-clock测试补等房间队列后presence单文件5/5；真实Engine.IO握手验证10s/20s，不等待真实计时 |
 | 05 房主治理 | 增量通过 | Luna：room-governance5 + member-presence5 + room-membership5；typecheck通过。审阅后补强双候选加入顺序、旧房主在线返回、拒绝非房主/离线/观众目标、复盘解散拒绝；单文件复跑5/5 |
 | 06 零正式成员回收 | 增量通过 | Luna：初始empty5 + membership5 + governance5及typecheck；审阅补上未执行回调时入口拒绝、死亡/复盘保留，最终empty7/7。最后仅新增测试后未重复typecheck，后续类型门禁覆盖；不再以标题声称覆盖 |
-| 07–13 | 待实施 | 见计划，暂未变更 3000/3001 部署 |
+| 07a 对局绑定第二屏 | 增量通过 | Luna：screen-grants5 + membership5 + access6及typecheck；补强真实离开、旧设备兑换失败不消费token、媒体撤销spy后单文件5/5。只验证领域层，Socket撤销待08 |
+| 07b–13 | 待实施 | 见计划，暂未变更 3000/3001 部署 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -29,3 +30,4 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 | 04 / c0d5c61 | member-presence、room-membership、v2-realtime；补等异步队列后仅member-presence复跑 | f02b13698e99976d1044adf5d86cccea681856e581d69039110b31cd3bb0ade6 / 0501a22a4ca1fb61a31a6c708973d10e27823bab923c9c80b042e41ed34f7178 |
 | 05 / 21cf852 | room-governance、member-presence、room-membership；补强后仅治理复跑 | a69e27e95b9e257d0450f98d41532bc33239dc2d29a0b6127ae1c51721b04307 / a2561679df5f67a33dc1e650a86e84dfcaef79018e1a2ca40aeb55afe13541e3 |
 | 06 / 9319d3d | empty-rooms、room-membership、room-governance；补强后empty-rooms7例复跑 | 5729d3a80d10871d928d18ea313bc2a6f59d4e1f02aa339eab01c29f70937269 / 9e61c52944c855b2b653cac70ff68d20b6b1e4e0904c16e656b40b2e8fefcb6c |
+| 07a / f3a23d2 | screen-grants、room-membership、access-v2；审阅补强后screen-grants5例复跑 | 3104edc71c5b6e5c5a60ad3456bd0f2872b1b9a3eb4c3c8e37020374bb4468a0 / c2b30c0158e6e288c1b38bc966f597e3074bcb0018cad914405dcc1c3363a01d |
