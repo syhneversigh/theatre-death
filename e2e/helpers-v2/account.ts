@@ -13,9 +13,14 @@ export interface ResetAccount extends LoginAccount {
   token: string;
 }
 
+export interface RoomAccount extends LoginAccount {
+  userId: string;
+}
+
 export interface AccountCase extends RegistrationAccount {
   lost: RegistrationAccount;
   reset: ResetAccount;
+  rooms?: RoomAccount[];
 }
 
 export function loadAccountCase(projectName: string): AccountCase {

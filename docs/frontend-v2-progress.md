@@ -4,7 +4,7 @@
 
 ## 当前断点
 
-F00/F01 基础已通过定向验证并提交6bab698；F02账户/头像/改密/重置码核心已通过真实双浏览器6例。下一步F03：首页创建/加入、真实房间订阅、大厅与治理。独立前端 http://localhost:5173，API 仅容器网络暴露；专用 data-frontend-v2 与 td_account_frontend_v2。房间/对局尚未接入界面，完整 UI 验收未完成。个人显示偏好放到F08一起实现，仍属待完成范围。
+F00/F01提交6bab698，F02提交c5d2f23。F03首页/大厅核心已通过双浏览器6例，相关账户回归6例通过；下一步F04/F05完整对局舞台与18类行动。对局现在仅为公共状态壳，不能用开局通过冒充完整游戏UI。独立前端 http://localhost:5173，API仅容器网络暴露；专用data-frontend-v2与td_account_frontend_v2。完整UI验收未完成。个人显示偏好放到F08一起实现，仍属待完成范围。
 
 ## 里程碑
 
@@ -13,7 +13,7 @@ F00/F01 基础已通过定向验证并提交6bab698；F02账户/头像/改密/�
 | F00 工程与素材 | 基础通过 | 隔离启动、前端 typecheck/build、同源 bootstrap/auth smoke；登录页桌面/390×844 预览。身份卡/场景原样复制，默认头像为原图 SVG 裁切；身份卡及头像实际视图待后续验收 |
 | F01 传输与状态 | 基础通过 | Luna 两文件14例及后端typecheck通过；HTTP/快照纯逻辑已验证，真实Socket/control接入待房间步骤 |
 | F02 认证账户 | 核心通过 | 头像单测5例；新版类型检查/构建；Chromium3例+WebKit3例真实账户链通过；个人显示偏好在F08实现，全部异常组合在F09补验 |
-| F03 首页大厅 | 未开始 | |
+| F03 首页大厅 | 核心通过 | 配置/权限/标题9例；房间Chromium3+WebKit3；账户回归6；空房5分钟/自动继任等补充分支留F09 |
 | F04 对局结构 | 未开始 | |
 | F05 全部行动 | 未开始 | |
 | F06 信息规则 | 未开始 | |
@@ -47,3 +47,16 @@ F00/F01 基础已通过定向验证并提交6bab698；F02账户/头像/改密/�
 - 两份独立报告为test-results-frontend-v2/results-webkit.json与results-chromium.json。覆盖真实邀请注册、hash账户页刷新、头像预览取消/裁剪保存、非法SVG/损坏PNG不覆盖、错误旧密码、正确改密后本人及独立旧context都401、新密码重登、维护者token重置、服务端已注册但响应丢失时登录恢复且无重复注册。未跑旧UI或全量E2E。
 - 主代理审阅最终测试逻辑和桌面/390×844账户截图；默认头像显示范围正确，账号完整展示、导航长名截断，主操作可达。截图分别account-{chromium,webkit}.png、login-after-change-*.png、login-after-logout-*.png，不包含密码或邀请。
 - 本机Git缺少作者设置，提交使用单次 `-c user.name=Codex -c user.email=codex@local.invalid`，不修改全局身份。后续保持本地小分支提交并ff合入frontend/v2，不推送。
+
+## F03 实现与核心验收
+
+- 新建AuthenticatedShell持有房间Socket，导航到账户/首页不等同离开。登录前直接访问房间hash会保留目标；恢复、进入和接管分开。me/rooms异步响应带本地序号，终端control清理后不接受早先请求回填。
+- 创建页按catalog展示唯一正式板与自定义实验板；提交正式板不发roles，自定义明确人数/角色合计及约束。进入页区分房间码与邀请，接管需显式确认。大厅按capabilities控制准备、开局、转移、踢人、补位、离开/解散，提供冻结规则与完整章节入口。
+- 房间写操作保存原requestId及完整载荷，未知结果不显示失败或自动重发；管理弹层的目标和权限在确认时重查。空房倒计时使用服务端emptyDeadline，不以连接数或死亡数推断。
+- Luna只新增tests/frontend-v2-room-model.test.ts，指定增量9/9及根typecheck通过。主代理已阅读断言：实际完整fixture，非法配置、memberId/权限、自我保护、公开夜间标题不依赖私有窗口、白天标签和倒计时。不能据此推断真实UI治理已通过。
+- F03 E2E范围：新02-rooms.spec及必要helper，Chromium/WebKit；默认正式板与治理、实验5人满员观战/显式补位/离线可开局、创建响应丢失同ID重试及跨设备接管。seed扩充每个project七个独立房间账号，仅写专用测试库。仍禁止用构造phase/win当完整玩法证据。
+- F03首轮E2E在“创建房间”入口停止：宿主与容器app.tsx/config均同SHA，但Vite HTTP仍返回旧Home、不含AuthenticatedShell；500ms轮询并未根治当前Docker Desktop下的缓存问题。旧证据归档archive/f03-old-vite-cache。改为冻结源码检查点先显式restart web（不重启API），待端口就绪再核对实际HTTP模块；开发过程不可仅靠页面刷新推断代码已加载。最终交付以独立静态构建验证，不依赖热更新。
+- 实际执行：typecheck:web:v2、build:web:v2、browser直接TypeScript检查通过；指定02-rooms.spec Chromium3/3（26.6秒）、WebKit3/3（32.6秒）。随后相关01-account双浏览器6/6（16.3秒）。主代理读取JSON统计均unexpected/skipped/flaky=0并审阅测试与真实大厅截图。
+- 房间证据固定在test-results-frontend-v2/results-f03-rooms-chromium.json、results-f03-rooms-webkit.json；账户回归固定在results-f03-account-regression.json。早期泛名results-chromium/results-webkit会被后续运行复用，不能作为历史不可变证据；以后每阶段保存唯一命名报告。
+- 真实场景包含：正式13人请求不含roles、规则只读、准备/取消/刷新、切账户后服务端仍在线、转移房主、踢人重入新memberId、解散后码失效；实验5人满员观战、主动promote未准备、被踢重入观众、关页后轮询服务端真实offline再开局、固定gameId、开局后踢人边界、明确leave；首次创建已执行但响应丢失，用相同UUID和完整载荷恢复且仅新增一个当前房间，显式接管后旧端清界面/准备状态保留。me/rooms允许包含此前已离开的可恢复旧局，测试按新增roomId而非列表总长度判断。
+- 此步没有验证整局行动、投票、聊天、私人第二屏、真实5分钟空房回收或完整自动继任链。切账户测试证据为返回后服务端在线，不将它夸大为对每一网络帧的无断开证明。

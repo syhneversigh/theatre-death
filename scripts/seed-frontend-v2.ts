@@ -17,10 +17,18 @@ try {
     const password = randomBytes(18).toString('base64url');
     const resetUsername = `ur_${run}_${browser}`;
     store.register(resetUsername, await hashPassword(password), store.invite().token);
+    const roomUsers: { username: string; password: string; userId: string }[] = [];
+    for (let index = 0; index < 7; index++) {
+      const username = `room_${run}_${browser}_${index}`;
+      const roomPassword = randomBytes(18).toString('base64url');
+      const account = store.register(username, await hashPassword(roomPassword), store.invite().token);
+      roomUsers.push({ username, password: roomPassword, userId: account.id });
+    }
     accounts[browser] = {
       username: `ui_${run}_${browser}`, password, invitation: store.invite().token,
       lost: { username: `ul_${run}_${browser}`, password: randomBytes(18).toString('base64url'), invitation: store.invite().token },
       reset: { username: resetUsername, password: randomBytes(18).toString('base64url'), token: store.invite('reset', resetUsername).token },
+      rooms: roomUsers,
     };
   }
   writeFileSync('/test-access/accounts.json', JSON.stringify(accounts), { mode: 0o600 });
