@@ -105,7 +105,7 @@ describe('v2 RoomSnapshot contract', () => {
     room.members.get(host.userId)!.ready = true;
     const readyChanged = f.snapshots.read(room, host.session);
     expect(readyChanged.viewVersion).toBeGreaterThan(timeOnly.viewVersion);
-    f.profiles.get(host.userId)!.username = 'renamed';
+    f.profiles.get(host.userId)!.avatarUrl = 'https://cdn.example.test/avatar.png';
     f.profiles.get(host.userId)!.profileVersion = 1;
     const profileChanged = f.snapshots.read(room, host.session);
     expect(profileChanged.viewVersion).toBeGreaterThan(readyChanged.viewVersion);
@@ -165,7 +165,10 @@ describe('v2 RoomSnapshot contract', () => {
     const civilianView = f.snapshots.read(room, civilian.session);
     const spectatorView = f.snapshots.read(room, spectator.session);
     expect(doorView.tasks.some((task) => task.action === 'SUBMIT_GUARD')).toBe(true);
+    expect(doorView.windows.some((window) => window.id === 'guard')).toBe(true);
     expect(civilianView.tasks.some((task) => ['SUBMIT_GUARD', 'SUBMIT_LAIKE', 'EDIT_PROPOSAL'].includes(task.action))).toBe(false);
+    expect(civilianView.windows.some((window) => window.id === 'guard')).toBe(false);
     expect(spectatorView.tasks).toEqual([]);
+    expect(spectatorView.windows).toEqual([]);
   });
 });
