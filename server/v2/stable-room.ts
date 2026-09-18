@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import type { MemberKind, Presence, RoomPhase } from '../../contracts/v2.ts';
+import type { MemberKind, Presence, RoomPhase, SubmissionDTO } from '../../contracts/v2.ts';
 import type { RulesetConfig } from '../../rulesets/types.ts';
 import { ROLE_IDS } from '../../rulesets/types.ts';
 import type { Clock } from '../clock.ts';
@@ -55,6 +55,7 @@ export class StableRoom {
   matchEndedAt: number | null = null;
   access: RoomAccess | null = null;
   receipts = new ReceiptStore();
+  readonly submissions = new Map<string, Map<string, SubmissionDTO>>();
   emptyDeadline: number | null = null;
   dissolved = false;
   nextJoinOrder = 1;
@@ -84,6 +85,7 @@ export class StableRoom {
     this.runtime = runtime;
     this.matchStartedAt = this.deps.clock.now(); this.matchEndedAt = null;
     this.receipts = new ReceiptStore();
+    this.submissions.clear();
     this.participants.clear();
     const access = new RoomAccess(runtime, this.deps.accounts, () => this.deps.clock.now(), (identity) => this.deps.revokeMedia(runtime.gameId, identity));
     this.access = access;
@@ -104,5 +106,16 @@ export class StableRoom {
       this.matchEndedAt ??= this.deps.clock.now();
       this.deps.logStore.finishMatch(this.runtime.gameId, 'completed', this.matchEndedAt);
     }
+  }
+  rememberSubmission(playerId: string, submission: SubmissionDTO): void {
+    const entries = this.submissions.get(playerId) ?? new Map<string, SubmissionDTO>();
+    const open = new Set(this.runtime?.driver?.windows().map((w) => w.instanceId) ?? []);
+    for (const [key, value] of entries) if (!open.has(value.windowInstanceId)) entries.delete(key);
+    if (open.has(submission.windowInstanceId)) entries.set(JSON.stringify([submission.windowInstanceId, submission.action]), structuredClone(submission));
+    this.submissions.set(playerId, entries);
+  }
+  activeSubmissions(playerId: string): SubmissionDTO[] {
+    const open = new Set(this.runtime?.driver?.windows().map((w) => w.instanceId) ?? []);
+    return [...(this.submissions.get(playerId)?.values() ?? [])].filter((s) => open.has(s.windowInstanceId));
   }
 }

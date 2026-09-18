@@ -4,6 +4,7 @@ import { CONTRACT_VERSION } from '../../contracts/v2.ts';
 import type { Clock } from '../clock.ts';
 import type { LogStore } from '../log-store.ts';
 import { RoomRegistry } from '../rooms.ts';
+import { RequestFingerprintError } from '../receipts.ts';
 import type { VoiceService } from '../../voice/livekit.ts';
 import { buildReviewView } from '../../visibility/review.ts';
 import { THEATER_DEATH_13_V2 } from '../../rulesets/theater-death-13-v2.ts';
@@ -70,7 +71,7 @@ export function createV2App(deps: V2Deps) {
   const presence = new MemberPresence(directory);
   const rounds = new RoomRounds(directory, governance);
   const grants = new ScreenGrants(directory);
-  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id) });
+  snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id) });
   hub = createRoomRealtime({ directory, snapshots, presence, origin: deps.origin, cookieName: deps.cookieName });
   const maintenance = createMaintenance(directory, empty);
   const revokeUser = async (userId: string, event: AccountRevocation = { reason: 'credentials_changed' }) => {
@@ -193,18 +194,37 @@ export function createV2App(deps: V2Deps) {
   });
   router.post('/rooms/:code/command', async (req, res) => {
     limited(req, 'command', 16, 2000);
-    res.json(await mutate(req, (room, s) => {
-      requireMatch(room, matchId(req)); const id = player(room, s); const command = parseCommand(req.body, id);
-      const requestId = textField(req.body.requestId, 'request_id', 1, 80);
-      const runtime = room.runtime!;
-      return room.receipts.execute(runtime.gameId, id, requestId, req.body, () => {
+    const room = roomFor(req); const s = intent(req); const gameId = matchId(req);
+    requireMatch(room, gameId); const id = player(room, s);
+    const requestId = textField(req.body.requestId, 'request_id', 1, 80);
+    const receipt = await room.receipts.executeQueued(gameId, id, requestId, req.body, () => room.enqueue(() => {
+      try {
+        if (room.dissolved || directory.byId.get(room.roomId) !== room) throw new ApiError(404, 'room_not_found');
+        requireMatch(room, gameId); player(room, session(req));
+        const runtime = room.runtime!; const command = parseCommand(req.body, id);
         const currentWindow = runtime.driver?.windows().some((w) => w.instanceId === command.windowInstanceId);
         const cap = gameView(runtime, { subjectPlayerId: id, readOnly: false }, clock.now()).capabilities;
-        if (currentWindow && !cap?.allowedCommands.includes(command.type)) return { requestId, status: 'rejected', code: 'action_forbidden', message: '当前无此行动权限' };
+        if (currentWindow && !cap?.allowedCommands.includes(command.type)) return { requestId, status: 'rejected' as const, code: 'action_forbidden', message: '当前无此行动权限' };
         const result = runtime.driver!.submit(command);
-        return { requestId, status: result.accepted ? 'accepted' : 'rejected', code: result.code, message: result.message };
-      });
+        if (result.accepted) room.rememberSubmission(id, {
+          action: command.type, windowInstanceId: command.windowInstanceId!, requestId, acceptedAt: clock.now(),
+          targets: Array.isArray(req.body.targets) ? [...req.body.targets] : [],
+          revision: typeof req.body.revision === 'number' ? req.body.revision : null,
+          direction: req.body.direction === 'asc' || req.body.direction === 'desc' ? req.body.direction : null,
+        });
+        refresh(room);
+        return { requestId, status: result.accepted ? 'accepted' as const : 'rejected' as const, code: result.code, message: result.message };
+      } catch (error) {
+        if (error instanceof ApiError) return { requestId, status: 'rejected' as const, code: error.code, message: error.message };
+        throw error;
+      }
     }));
+    res.json(receipt);
+  });
+  router.get('/rooms/:code/games/:gameId/receipts/:requestId', (req, res) => {
+    const room = roomFor(req); const s = session(req); const gameId = String(req.params.gameId);
+    requireMatch(room, gameId); const id = player(room, s);
+    res.json(room.receipts.lookup(gameId, id, textField(req.params.requestId, 'request_id', 1, 80)));
   });
   router.post('/rooms/:code/chat', async (req, res) => {
     const s = limited(req, 'chat', 5, 2500); const room = roomFor(req);
@@ -232,6 +252,7 @@ export function createV2App(deps: V2Deps) {
   app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof ApiError) { res.status(error.status).json({ error: { code: error.code, message: error.message } }); return; }
     if (error instanceof SyntaxError) { res.status(400).json({ error: { code: 'invalid_json' } }); return; }
+    if (error instanceof RequestFingerprintError) { res.status(400).json({ error: { code: 'invalid_request_payload' } }); return; }
     if ((error as { status?: number })?.status === 413) { res.status(413).json({ error: { code: 'request_too_large' } }); return; }
     console.error('v2_request_failed', error instanceof Error ? error.message : 'unknown');
     res.status(500).json({ error: { code: 'internal_error' } });

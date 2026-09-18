@@ -15,7 +15,8 @@
 | 08a 明确快照DTO | 基础投影增量通过 | Luna：contract-snapshots8 + knowledge8 + room-rounds1，17/17与typecheck通过。初次修复SeatDTO presence推断。大厅字段、权限、私人窗口、隐藏事件版本、私屏只读及投票计数；新投影的公告前后链、跨局版本与网络授权仍待08b/c，非空提交状态待09 |
 | 08b 房间Socket订阅 | 增量通过 | Luna：room-realtime4 + contract-snapshots8 + member-presence5，17/17及typecheck。roomId握手、接管/撤销断开、同连接跨复盘及新局递增版本、隐藏事件不推帧、失效会话原因；复盘状态为传输fixture，不是再次真实玩法验收。HTTP尚未接入 |
 | 08c HTTP与维护接入 | 增量通过 | HTTP A 8例；真实公告前夜死者报名/发言/语音许可/投票/当选到公告1例；观战/维护10例；auth5+race1；目录与旧计时器回归12例。最终容器typecheck通过。旧join/watch已无入口；全局当前房间、logout区别、自然7天过期、媒体mock撤销、空房跨房清理均验证。未测外部LiveKit |
-| 09–13 | 待实施 | 房间写幂等/命令查询和提交状态、聊天去重、账号迁移、头像、资料目录与契约验收、候选构建/容量/切换尚未完成 |
+| 09a 命令回执与提交状态 | 增量通过 | command-receipts-api3 + receipts6 + v2-api3 + room-rounds1，13/13与typecheck。阻塞队列下pending、同意图并发只执行一次、排队越过截止、跨人查询隔离、私屏请求ID隐藏、当前窗口提交状态和复盘保留。补强随机合法目标/完成后冲突/二次合法提交后单文件3/3 |
+| 09b–13 | 待实施 | 房间写操作幂等、聊天去重、账号迁移、头像、资料目录与契约验收、候选构建/容量/切换尚未完成 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -43,3 +44,5 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 08c维护测试最初迁移删减过多且没有调用实际maintenance，主代理拒绝该证据；另一Luna按真实HTTP/maintenance补齐上述10例后通过。类型检查分别发现回调返回值兼容与两个测试helper的gameId:null断言错误，修正后通过，未弱化行为断言。
 
 3003开发实例现已运行：theater-death-contract-app-1，原生Node24启动成功，/healthz返回contractVersion=2.1/rulesVersion=2.0。Docker inspect确认server/contracts/tests等只读工作树挂载、data-contract-2.1独立读写；账号schema尚为1、头像与catalog等后续功能尚未接入。此健康检查仅证明导入/启动成功。3000/3001保持原镜像，尚未做候选切换。
+
+09a基线db9aa4f，Docker只读源码：receipts.ts SHA256 be1e1c56232fc9aeab0cbb8c7df4b4947a9211a4d60a75fefa416eea8b93c6ae；app.ts b78e8f7fc1665f8171c2a6ec509c99b30c3775606b04d0504fa1007fd5ec7ba6；最终新增测试8ca39ff76e9abf1e520ba3a3bb7dad45192527bd4d449fa48fa7d33fffdb19b4。查询不执行命令；完整内容指纹区别数值/字符串/null并限制异常嵌套，避免错误重放。

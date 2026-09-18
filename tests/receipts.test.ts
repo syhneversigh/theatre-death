@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ReceiptStore } from '../server/receipts.ts';
+import { ReceiptStore, RequestFingerprintError, requestFingerprint } from '../server/receipts.ts';
 import type { CommandReceipt } from '../server/rooms.ts';
 
 function receipt(requestId: string, code = 'accepted'): CommandReceipt {
@@ -91,5 +91,34 @@ describe('ReceiptStore 请求幂等与指纹', () => {
     expect(reorderedKeys).toBe(first);
     expect(reorderedArray).toMatchObject({ status: 'rejected', code: 'request_id_reused' });
     expect(applied).toBe(1);
+  });
+
+  it('queued receipts expose pending, deduplicate same payload, and reject conflicts before execution', async () => {
+    const store = new ReceiptStore();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    let applied = 0;
+    const first = store.executeQueued('game', 'player', 'queued', { action: 'x' }, async () => {
+      await gate;
+      applied += 1;
+      return receipt('queued');
+    });
+    expect(store.lookup('game', 'player', 'queued')).toEqual({ requestId: 'queued', status: 'pending' });
+    const retry = store.executeQueued('game', 'player', 'queued', { action: 'x' }, async () => { applied += 1; return receipt('queued', 'wrong'); });
+    const conflict = await store.executeQueued('game', 'player', 'queued', { action: 'y' }, async () => { applied += 1; return receipt('queued', 'wrong'); });
+    expect(conflict).toMatchObject({ requestId: 'queued', status: 'rejected', code: 'request_id_reused' });
+    release();
+    await expect(retry).resolves.toEqual(await first);
+    expect(applied).toBe(1);
+    expect(store.lookup('game', 'player', 'queued')).toMatchObject({ requestId: 'queued', status: 'accepted' });
+  });
+
+  it('tags null, Infinity, and -0 distinctly and rejects payloads deeper than 32 levels', () => {
+    expect(requestFingerprint(null)).not.toBe(requestFingerprint('null'));
+    expect(requestFingerprint(Infinity)).not.toBe(requestFingerprint(null));
+    expect(requestFingerprint(-0)).not.toBe(requestFingerprint(0));
+    let nested: unknown = null;
+    for (let depth = 0; depth < 34; depth += 1) nested = { next: nested };
+    expect(() => requestFingerprint(nested)).toThrow(RequestFingerprintError);
   });
 });

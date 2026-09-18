@@ -22,6 +22,7 @@ export class RoomRounds {
       room.runtime = null; room.access = null; room.participants.clear();
       room.matchStartedAt = null; room.matchEndedAt = null;
       room.receipts = new ReceiptStore();
+      room.submissions.clear();
       for (const member of room.members.values()) {
         member.ready = false;
         if (member.kind === 'private_spectator') member.kind = 'public_spectator';
