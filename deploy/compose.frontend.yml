@@ -40,3 +40,30 @@ services:
     depends_on:
       api:
         condition: service_healthy
+  seed:
+    extends:
+      service: test
+    profiles: [browser]
+    command: [node, scripts/seed-frontend-v2.ts]
+    environment:
+      DATA_DIR: /app/data-frontend-v2
+    volumes:
+      - ../data-frontend-v2:/app/data-frontend-v2
+      - frontend-test-access:/test-access
+  browser:
+    image: theater-death-frontend-e2e:pw1630-ts
+    profiles: [browser]
+    network_mode: service:web
+    command: [npx, playwright, test, --config=playwright.v2.config.ts]
+    volumes:
+      - ../e2e/specs-v2:/e2e/specs-v2:ro
+      - ../e2e/helpers-v2:/e2e/helpers-v2:ro
+      - ../e2e/playwright.v2.config.ts:/e2e/playwright.v2.config.ts:ro
+      - ../e2e/tsconfig.v2.json:/e2e/tsconfig.v2.json:ro
+      - ../test-results-frontend-v2:/results
+      - frontend-test-access:/test-access:ro
+    depends_on:
+      web:
+        condition: service_started
+volumes:
+  frontend-test-access:

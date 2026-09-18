@@ -19,7 +19,7 @@ export function AuthPage({ bootstrap, onLogin }: { bootstrap: BootstrapDTO; onLo
   const active = useRef(true);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const changeMode = (next: typeof mode) => {
-    setMode(next); setError(''); setPassword(''); setConfirmation(''); setShow(false);
+    setMode(next); setError(''); setNotice(''); setPassword(''); setConfirmation(''); setShow(false);
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault(); if (busy) return;

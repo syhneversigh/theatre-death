@@ -1,0 +1,28 @@
+/** Disposable test access only. Never point this helper at an existing deployment. */
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { join, resolve } from 'node:path';
+import { AccountStore } from '../server/v2/account-store.ts';
+import { hashPassword } from '../server/v2/passwords.ts';
+
+const dir = process.env.DATA_DIR;
+if (!dir || resolve(dir) !== '/app/data-frontend-v2') throw new Error('This seed helper requires the isolated frontend database.');
+mkdirSync(dir, { recursive: true });
+mkdirSync('/test-access', { recursive: true });
+const store = new AccountStore(join(dir, 'accounts.sqlite'));
+try {
+  const run = randomBytes(5).toString('hex');
+  const accounts: Record<string, unknown> = {};
+  for (const browser of ['chromium', 'webkit']) {
+    const password = randomBytes(18).toString('base64url');
+    const resetUsername = `ur_${run}_${browser}`;
+    store.register(resetUsername, await hashPassword(password), store.invite().token);
+    accounts[browser] = {
+      username: `ui_${run}_${browser}`, password, invitation: store.invite().token,
+      lost: { username: `ul_${run}_${browser}`, password: randomBytes(18).toString('base64url'), invitation: store.invite().token },
+      reset: { username: resetUsername, password: randomBytes(18).toString('base64url'), token: store.invite('reset', resetUsername).token },
+    };
+  }
+  writeFileSync('/test-access/accounts.json', JSON.stringify(accounts), { mode: 0o600 });
+  console.log('Prepared disposable frontend account cases; access is in the private test volume.');
+} finally { store.close(); }

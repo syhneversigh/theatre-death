@@ -16,8 +16,8 @@ export function Avatar({ url, name, size = 'normal' }: { url: string | null; nam
 
 export function Field({ label, hint, error, ...props }: InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: string; error?: string }) {
   const id = useId();
-  return <label className="field" htmlFor={id}><span className="field__label">{label}</span>
-    <input {...props} id={id} aria-invalid={!!error} aria-describedby={hint || error ? `${id}-hint` : undefined}/>
+  return <label className="field" htmlFor={id}><span id={`${id}-label`} className="field__label">{label}</span>
+    <input {...props} id={id} aria-labelledby={`${id}-label`} aria-invalid={!!error} aria-describedby={hint || error ? `${id}-hint` : undefined}/>
     {(hint || error) && <span id={`${id}-hint`} className={error ? 'field__error' : 'field__hint'}>{error || hint}</span>}
   </label>;
 }
@@ -26,12 +26,12 @@ export function Notice({ children, error = false }: { children: ReactNode; error
   return <div className={`notice ${error ? 'notice--error' : ''}`} role={error ? 'alert' : 'status'}>{children}</div>;
 }
 
-export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+export function Modal({ title, children, onClose, dismissible = true }: { title: string; children: ReactNode; onClose: () => void; dismissible?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => { const dialog = ref.current; dialog?.showModal(); return () => dialog?.close(); }, []);
-  return <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); onClose(); }}>
-    <header className="modal__head"><h2 id={titleId}>{title}</h2><button className="icon-button" type="button" aria-label="关闭" onClick={onClose}>×</button></header>
+  return <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={event => { event.preventDefault(); if (dismissible) onClose(); }}>
+    <header className="modal__head"><h2 id={titleId}>{title}</h2><button className="icon-button" type="button" aria-label="关闭" disabled={!dismissible} onClick={onClose}>×</button></header>
     {children}
   </dialog>;
 }
