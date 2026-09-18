@@ -26,7 +26,8 @@
 | 11c 头像HTTP与资料同步 | 增量通过 | Luna：avatars-api5 + account-profile6 + client-catalog4 + v2-maintenance6，共21例；补鉴权GET后单文件5/5。最终tsc通过，测试请求体改成Node Buffer后再单文件5/5。认证/Origin/大小/三格式、保存后Socket与复盘当前头像、异步撤销及频率均验证；复盘为构造状态，真实语音未涉及 |
 | 12a 契约与完整JSON/客户端示例 | 增量通过 | Luna：contract-openapi3 + contract-client-example5；连同CI选择器最终14例及typecheck。OpenAPI收录35路径/34schema，校验选定真实HTTP/Socket响应及19份完整场景JSON，另列人工片段；并非每条路径的全部错误分支。门先生/魂灵按实际角色定位、真实进入白天；复盘明确为构造状态。示例拒绝旧账号/旧房间/旧版本并保留未知结果语义 |
 | 12b 增量CI与候选门禁 | 配置及选择器增量通过 | test-selection6例覆盖只列清单、文档/共享helper/依赖映射、去重、未知路径失败；与12a合计14例及tsc通过。功能PR只跑选定范围，手动candidate工作流构建全量单元/API镜像。未推送，未声称GitHub远程工作流已运行 |
-| 13 候选发布 | 待实施 | 负载客户端已适配2.1但未执行；完整候选构建、5分钟容量、回滚与3001切换仍待完成 |
+| 13a 短接通与性能定位 | 发现瓶颈并增量修复 | 5秒源码挂载probe：100账号/50连接/两桌均接通、错误/泄露/重复计数0，但普通API P95=1808.77ms不达标。资料查询是主要重复开销；新增有界公开资料缓存，头像事务成功后更新，授权与会话仍查实时存储。缓存/头像/资料4文件20例及tsc、事务回滚补强单文件4例通过。必须重新测量，不将probe视为5分钟验收 |
+| 13b 候选发布 | 待实施 | 完整候选构建、正式5分钟容量、回滚与3001切换仍待完成 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -78,3 +79,5 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 12基线7aa9abc，最终Docker指定contract-openapi、contract-client-example、test-selection三个文件共14例与typecheck。测试SHA256：contract-openapi 71e24675ef5e5704ac4ff75eef1ac078cc684fcf9e2c926b183d03c0f75da1e7；full-index 59d4b694e47b4990a58565fbd80bc4e6efe84025677018f898cc3faedf5c3d56。最初仅8个人工小对象不能满足完整mock，主代理拒绝收尾；补齐实际响应导出的19场景后再校验通过。源码tests只读挂载，导出写独立临时结果目录，核对后搬入fixtures；无真实凭证。示例mock的typeof fetch类型修正后最终统一tsc通过。
 
 12b选择器源码SHA256 3cc92b4238c4376b77afd50d7e8e0bf4c15d9c45b57943d68eadd976edf9460f，测试ce290920813f0282a21143096f17e8c2b8e2734eb8b05670ec56229ceee90a36。12a提交前仅清除JSON文件末尾多余空行，测试数据未变。原上游main发布工作流保留；本次新增backend-v2-candidate手动工作流不推送/部署镜像，只做候选门禁与身份记录。真正候选构建仍由13执行。
+
+13a基线571ebe2：Luna seed独立data-v2-load/contract-2.1（100账号），load-client在独立容器运行DURATION_MS=5000，保存test-results-v2/contract-2.1/capacity-probe.json，随后停止load-app；2CPU/4GiB已inspect确认。probe普通API P95失败，唯一diagnostics样本来自负载前，不能据此证明负载期P99。主代理用同库隔离探针测100份完整snapshot：每次读SQL资料742.24ms，预载资料且保留相同授权校验68.09ms，仅用于定位。缓存修复测试为account-profile-cache、avatars、avatars-api、account-profile共20例及typecheck；SQLite在UPDATE前abort验证此前asset插入也回滚，单文件复跑4/4。最终cache测试SHA256 feda91d56794a0d49c6674fe849f7032ec833380c639ecaa8e8dc46bc10457d2，account-store源码3c95b030f76bd899406ac9db4e11df47ad80a5c4839b5728c04e91080fa28775。

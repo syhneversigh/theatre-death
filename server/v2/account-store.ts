@@ -14,6 +14,8 @@ export interface AccountSession { id: string; userId: string; expiresAt: number 
 export class AccountStore {
   readonly db: DatabaseSync;
   readonly now: () => number;
+  // Public profile fields only; mutable fields are committed via replaceAvatar. Never cache sessions/passwords.
+  private readonly profiles = new Map<string, Profile>();
   constructor(path: string, now: () => number = Date.now) {
     this.now = now;
     this.db = new DatabaseSync(path);
@@ -49,19 +51,34 @@ export class AccountStore {
     return row ? { id: String(row.id), username: String(row.username), passwordHash: String(row.password_hash) } : null;
   }
   profile(userId: string): Profile {
+    const cached = this.profiles.get(userId);
+    if (cached) return { ...cached };
+    const profile = this.readProfile(userId);
+    this.rememberProfile(profile);
+    return profile;
+  }
+  private rememberProfile(profile: Profile): void {
+    this.profiles.delete(profile.userId);
+    if (this.profiles.size >= 2048) this.profiles.delete(this.profiles.keys().next().value!);
+    this.profiles.set(profile.userId, { ...profile });
+  }
+  private readProfile(userId: string): Profile {
     const row = this.db.prepare('SELECT username,avatar_id,profile_version FROM accounts WHERE id=?').get(userId);
     if (!row) throw new ApiError(404, 'account_not_found');
     return { userId, username: String(row.username), avatarUrl: row.avatar_id === null ? null : `/api/v2/avatars/${row.avatar_id}`, profileVersion: Number(row.profile_version) };
   }
   replaceAvatar(userId: string, assetId: string): Profile {
-    return this.transaction(() => {
+    const profile = this.transaction(() => {
       const old = this.db.prepare('SELECT avatar_id FROM accounts WHERE id=?').get(userId);
       if (!old) throw new ApiError(404, 'account_not_found');
       this.db.prepare('INSERT INTO avatar_assets(id,created_at,unreferenced_at) VALUES(?,?,NULL)').run(assetId, this.now());
       this.db.prepare('UPDATE accounts SET avatar_id=?,profile_version=profile_version+1 WHERE id=?').run(assetId, userId);
       if (old.avatar_id !== null) this.db.prepare('UPDATE avatar_assets SET unreferenced_at=? WHERE id=?').run(this.now(), old.avatar_id);
-      return this.profile(userId);
+      return this.readProfile(userId);
     });
+    // Only publish a committed profile. Failed updates leave the old cached value intact.
+    this.rememberProfile(profile);
+    return profile;
   }
   invite(purpose: 'register' | 'reset' = 'register', username?: string, ttl = purpose === 'register' ? WEEK : 1800_000) {
     const user = purpose === 'reset' ? this.byName(username ?? '') : null;
@@ -114,5 +131,5 @@ export class AccountStore {
   sessionActive(id: string): boolean { return this.db.prepare('SELECT id FROM sessions WHERE id=? AND expires_at>?').get(id, this.now()) !== undefined; }
   logout(id: string) { this.db.prepare('DELETE FROM sessions WHERE id=?').run(id); }
   collectExpired() { this.db.prepare('DELETE FROM sessions WHERE expires_at<=?').run(this.now()); }
-  close() { this.db.close(); }
+  close() { this.profiles.clear(); this.db.close(); }
 }

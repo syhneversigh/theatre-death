@@ -13,7 +13,7 @@ const mappings = [
   [/^package(-lock)?\.json$|^deploy\/Dockerfile.dependencies$/, ['runtime-dependencies', 'smoke']],
   [/^server\/v2\/avatars\.ts$/, ['avatars', 'avatars-api', 'account-profile', 'v2-maintenance']],
   [/^server\/v2\/catalog\.ts$/, ['client-catalog', 'rulesets', 'v2-api']],
-  [/^server\/v2\/account-store\.ts$/, ['account-store', 'account-profile', 'auth-v2', 'auth-race', 'v2-api']],
+  [/^server\/v2\/account-store\.ts$/, ['account-store', 'account-profile', 'account-profile-cache', 'avatars-api', 'auth-v2', 'auth-race', 'v2-api']],
   [/^server\/v2\/chat-receipts\.ts$/, ['chat-receipts-api', 'v2-api', 'room-rounds']],
   [/^server\/v2\/operation-receipts\.ts$/, ['operation-receipts', 'room-operation-api', 'v2-api']],
   [/^server\/receipts\.ts$/, ['receipts', 'command-receipts-api', 'v2-api']],
