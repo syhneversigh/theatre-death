@@ -2,9 +2,10 @@ import type { RoomDirectory } from './room-directory.ts';
 import type { EmptyRooms } from './empty-rooms.ts';
 
 /** Expired authentication removes control, not formal membership. Empty policy owns disposal. */
-export function createMaintenance(directory: RoomDirectory, empty: EmptyRooms) {
+export function createMaintenance(directory: RoomDirectory, empty: EmptyRooms, collectAssets?: () => Promise<unknown>) {
   let timer: ReturnType<typeof setInterval> | undefined;
   let active: Promise<void> | null = null;
+  let nextAssetCollection = 0;
   const sweep = (): Promise<void> => {
     if (active) return active;
     active = (async () => {
@@ -16,6 +17,10 @@ export function createMaintenance(directory: RoomDirectory, empty: EmptyRooms) {
         empty.observe(room); empty.expireIfDue(room);
         directory.deps.changed(room);
       }));
+      if (collectAssets && directory.deps.clock.now() >= nextAssetCollection) {
+        await collectAssets();
+        nextAssetCollection = directory.deps.clock.now() + 3600_000;
+      }
     })().finally(() => { active = null; });
     return active;
   };

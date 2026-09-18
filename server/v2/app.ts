@@ -30,9 +30,10 @@ import { RoomSnapshots } from './snapshots.ts';
 import { createRoomRealtime } from './room-realtime.ts';
 import type { ActiveMember, StableRoom } from './stable-room.ts';
 import { OperationReceipts } from './operation-receipts.ts';
-import { bootstrap, catalog } from './catalog.ts';
+import { bootstrap, catalog, AVATAR_LIMITS } from './catalog.ts';
+import type { AvatarStore } from './avatars.ts';
 
-export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; secureCookies?: boolean; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
+export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; secureCookies?: boolean; avatars?: AvatarStore; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
 
 export function createV2App(deps: V2Deps) {
   const { accounts, clock } = deps;
@@ -76,7 +77,7 @@ export function createV2App(deps: V2Deps) {
   const grants = new ScreenGrants(directory);
   snapshots = new RoomSnapshots({ directory, profile: (id) => accounts.profile(id), submissions: (room, id) => room.activeSubmissions(id) });
   hub = createRoomRealtime({ directory, snapshots, presence, origin: deps.origin, cookieName: deps.cookieName });
-  const maintenance = createMaintenance(directory, empty);
+  const maintenance = createMaintenance(directory, empty, deps.avatars ? () => deps.avatars!.collect() : undefined);
   const revokeUser = async (userId: string, event: AccountRevocation = { reason: 'credentials_changed' }) => {
     for (const room of [...directory.byId.values()]) await directory.transaction(() => room.enqueue(() => {
       if (room.dissolved) return;
@@ -101,6 +102,29 @@ export function createV2App(deps: V2Deps) {
     if (event.event === 'participant_joined' && event.room && event.participant) await media.joined(access.get(event.room.name), event.room.name, event.participant.identity);
     res.status(204).end();
   });
+  const rawAvatar = express.raw({ type: () => true, limit: AVATAR_LIMITS.maxBytes });
+  app.put('/api/v2/me/avatar', (req, _res, next) => {
+    try {
+      requireAccount(accounts, req, deps.cookieName);
+      if (req.headers.origin && req.headers.origin !== deps.origin) throw new ApiError(403, 'origin_forbidden');
+      if (!deps.avatars) throw new ApiError(409, 'avatars_disabled');
+      if (!AVATAR_LIMITS.formats.includes((req.get('content-type') ?? '').split(';')[0]!.toLowerCase())) throw new ApiError(415, 'invalid_avatar');
+      limited(req, 'avatar', 5, 60_000);
+      next();
+    } catch (error) { next(error); }
+  }, (req, res, next) => rawAvatar(req, res, (error) => next((error as { status?: number })?.status === 413 ? new ApiError(413, 'avatar_too_large') : error)), async (req, res) => {
+    const current = requireAccount(accounts, req, deps.cookieName);
+    const profile = await deps.avatars!.put(current.userId, req.body, (req.get('content-type') ?? '').split(';')[0]!.toLowerCase(), () => { requireAccount(accounts, req, deps.cookieName); });
+    for (const room of directory.byId.values()) if (room.members.has(current.userId) || room.participants.has(current.userId)) refresh(room);
+    res.json(profile);
+  });
+  app.get('/api/v2/avatars/:assetId', async (req, res) => {
+    requireAccount(accounts, req, deps.cookieName);
+    if (!deps.avatars) throw new ApiError(409, 'avatars_disabled');
+    const bytes = await deps.avatars.read(String(req.params.assetId));
+    requireAccount(accounts, req, deps.cookieName);
+    res.set('Cache-Control', 'private, max-age=604800, immutable').set('X-Content-Type-Options', 'nosniff').type('image/webp').send(bytes);
+  });
   app.use(express.json({ limit: '32kb' }));
   app.use((req, _res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -110,7 +134,7 @@ export function createV2App(deps: V2Deps) {
     next();
   });
   app.use('/api/v2/auth', authRouter(accounts, deps.secureCookies ?? false, revokeUser, deps.cookieName));
-  app.get('/api/v2/bootstrap', (_req, res) => res.json(bootstrap(!!deps.voice, false)));
+  app.get('/api/v2/bootstrap', (_req, res) => res.json(bootstrap(!!deps.voice, !!deps.avatars)));
   app.get('/api/v2/catalog', (_req, res) => res.json(catalog()));
   app.get('/healthz', (_req, res) => res.json({ status: 'ok', apiVersion: 2, contractVersion: CONTRACT_VERSION, rulesVersion: '2.0' }));
   app.get('/', (_req, res) => res.json({ service: 'theater-death-v2', api: '/api/v2', contractVersion: CONTRACT_VERSION, ui: 'not-included' }));
