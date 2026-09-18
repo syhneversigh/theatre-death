@@ -21,7 +21,8 @@
 | 09d 团队面板有效方案 | 增量通过 | Luna：v2-proposal、night-driver、contract-snapshots共33例与typecheck。显示最新草稿和此刻截止候选，区分旧全员确认、最新合法空刀、无提交及二阶段联合池；普通观众无私有方案。不修改实际结算策略 |
 | 10a 账号资料与邀请预检 | 增量通过 | Luna：account-profile6 + account-store5 + auth-v2 5 + auth-race1 + v2-api3，共20例与typecheck。真实schema1文件、已知旧会话和真实密码在schema2仍可用；资料/预检、过期、撤销、单次消费、限流已验证。无头像上传能力，预留存储列与资产表 |
 | 10b 客户端约束与规则目录 | 增量通过 | Luna：client-catalog4 + rulesets18 + v2-api3，共25例与typecheck。匿名元数据、实际voice开关、9角色/唯一正式板、完整54条2.0规则、创建5/64人与非法配置边界；不声明64人完整玩法通过。avatars仍为false |
-| 11–13 | 待实施 | 头像、契约验收、候选构建/容量/切换尚未完成 |
+| 11a 头像与契约验证依赖 | 增量通过 | 独立依赖镜像固定Sharp0.35.4/Ajv8.20.0，原包版本未升级。Luna：runtime-dependencies2 + smoke1 + client-catalog4，共7例与typecheck；实际生成/读取WebP、Ajv2020接受/拒绝样例。尚不代表头像业务已完成 |
+| 11b–13 | 待实施 | 头像处理、契约验收、候选构建/容量/切换尚未完成 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -61,3 +62,5 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 10a基线ae5ce08，新增account-profile测试SHA256 7275d5d34d69b79701c49488c07e28aa7ce97a0787a66938ec1e0c9a17cc6f17。上述5文件在Docker只读工作树运行，未扩大为全量。另一个Luna执行 `docker compose -f deploy/compose.contract.yml run --rm --no-deps -v <repo>/data-v2:/source:ro -v <repo>/data-v2-test:/checks test node scripts/check-contract-migration.mjs /source /checks/migration-contract-2.1-check-1`：账号schema2、审计schema1，integrity均ok、重复打开ok、原表数据不变。实际data-v2的accounts/invitations/sessions与events/messages/rooms均0行，此副本结果不能单独证明旧凭证保留；有数据的凭证保留由前述schema1真实文件测试证明。正式目录与3001尚未迁移。
 
 10b基线5789766，Docker只读源码及docs挂载运行client-catalog、rulesets、v2-api与typecheck。新测试hash 670cd6788bfb70f2a6d0bcbe0bb2cfb72a8112f5317593edab21e2e8d3f14589；全文规则同时入库作为catalog启动输入，原1.1历史文件保留。显式roles请求始终标实验，正式预设请求不发送roles。
+
+11a基线9695be2；实际Node v24.15.0、npm11.12.1。依赖镜像theater-death-contract-deps:sharp0354-ajv820，manifest sha256:ff3d66fe93bf9145f565b8b5bb983b49a4d0ab253fdecd5e88783554b44f3768；原始lock SHA256 201344f3a08498f027dfe149b1cbd3bb4d669a4564910e1b6b58e0c6fd19a02b，容器语义锁hash 98a5e16c65c3bd7dc48c4581de975afd4d602637d643156d802acef8c4770b99。上述3文件通过Docker只读挂载测试，新测试hash 559b8c1025988fab37c97fbb4283cabeadef901628049b390f29b220d8bc1627。未触发候选全量构建或load服务。

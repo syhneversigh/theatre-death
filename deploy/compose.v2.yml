@@ -1,6 +1,9 @@
 name: theater-death-v2
 x-source: &source
-  image: ghcr.io/azhen073/theater-death:sha-cc3e48ee300ba56db6bf79af43e07d2f297b667f
+  image: theater-death-contract-deps:sharp0354-ajv820
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile.dependencies
   working_dir: /app
   volumes:
     - ../contracts:/app/contracts:ro
