@@ -28,15 +28,25 @@ export class RoomDirectory {
     this.#queue = next.then(() => undefined, () => undefined);
     return next;
   }
-  mutate<T>(room: StableRoom, task: () => T): Promise<T> {
-    return this.transaction(() => room.enqueue(() => {
-      if (room.dissolved || this.byId.get(room.roomId) !== room) throw new ApiError(404, 'room_not_found');
-      this.deps.beforeMutation?.(room);
-      if (room.dissolved) throw new ApiError(404, 'room_not_found');
-      const value = task();
-      this.deps.changed(room);
-      return value;
-    }));
+  private async expireCurrent(userId: string): Promise<void> {
+    const id = this.current.get(userId);
+    if (!id) return;
+    const room = this.byId.get(id);
+    if (!room) { this.current.delete(userId); return; }
+    if (room.emptyDeadline !== null && this.deps.clock.now() >= room.emptyDeadline) await room.enqueue(() => this.deps.beforeMutation?.(room));
+  }
+  mutate<T>(room: StableRoom, task: () => T, session?: AccountSession): Promise<T> {
+    return this.transaction(async () => {
+      if (session) await this.expireCurrent(session.userId);
+      return room.enqueue(() => {
+        if (room.dissolved || this.byId.get(room.roomId) !== room) throw new ApiError(404, 'room_not_found');
+        this.deps.beforeMutation?.(room);
+        if (room.dissolved) throw new ApiError(404, 'room_not_found');
+        const value = task();
+        this.deps.changed(room);
+        return value;
+      });
+    });
   }
   checkSession(session: AccountSession) {
     if (!this.deps.accounts.sessionActive(session.id)) throw new ApiError(401, 'unauthorized');
@@ -46,7 +56,8 @@ export class RoomDirectory {
     if (current && current !== roomId) throw new ApiError(409, 'already_in_room');
   }
   create(session: AccountSession, ruleset: RulesetConfig): Promise<StableRoom> {
-    return this.transaction(() => {
+    return this.transaction(async () => {
+      await this.expireCurrent(session.userId);
       this.checkSession(session); this.checkCurrent(session.userId);
       if (this.byId.size >= 100) throw new ApiError(503, 'room_capacity');
       let code: string;
@@ -90,7 +101,7 @@ export class RoomDirectory {
     return member;
   }
   enter(room: StableRoom, session: AccountSession, takeover = false): Promise<ActiveMember> {
-    return this.mutate(room, () => this.enterWithinQueue(room, session, takeover));
+    return this.mutate(room, () => this.enterWithinQueue(room, session, takeover), session);
   }
   /** For atomic grant redemption; caller must already hold directory and room queues. */
   enterWithinQueue(room: StableRoom, session: AccountSession, takeover = false): ActiveMember {

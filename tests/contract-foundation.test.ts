@@ -69,12 +69,12 @@ describe('2.1 foundation account cookie contract', () => {
     const defaultCookie = `td_account_v2=${session.token}`;
     expect((await fetch(`${base}/api/v2/auth/me`, { headers: { cookie: customCookie } })).status).toBe(200);
     expect((await fetch(`${base}/api/v2/auth/me`, { headers: { cookie: defaultCookie } })).status).toBe(401);
-    const roomResponse = await fetch(`${base}/api/v2/rooms`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: customCookie }, body: JSON.stringify({ nickname: 'SocketUser' }) });
+    const roomResponse = await fetch(`${base}/api/v2/rooms`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: customCookie }, body: JSON.stringify({ requestId: 'foundation-create' }) });
     expect(roomResponse.status).toBe(201);
-    const room = await roomResponse.json() as { gameId: string };
+    const room = await roomResponse.json() as { roomId: string; gameId: null };
 
     const connect = (cookie: string) => {
-      const socket = ioClient(base, { path: '/api/v2/socket.io', auth: { gameId: room.gameId }, extraHeaders: { cookie }, reconnection: false });
+      const socket = ioClient(base, { path: '/api/v2/socket.io', auth: { roomId: room.roomId }, extraHeaders: { cookie }, reconnection: false });
       resources.push({ close: () => new Promise<void>((resolve) => { socket.close(); resolve(); }) });
       return socket;
     };

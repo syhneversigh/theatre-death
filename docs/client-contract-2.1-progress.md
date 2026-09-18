@@ -14,7 +14,8 @@
 | 07b 复盘回大厅与连续两局 | 增量通过 | Luna：room-rounds1完整链路 + stable-room5 + screen-grants5，11/11及typecheck通过。两次真实night/day结算human胜，首局实际用莱莱可技能；新局ID/技能/聊天/回执/邀请隔离，保留当前成员及连接。尚未验证HTTP/Socket跨局 |
 | 08a 明确快照DTO | 基础投影增量通过 | Luna：contract-snapshots8 + knowledge8 + room-rounds1，17/17与typecheck通过。初次修复SeatDTO presence推断。大厅字段、权限、私人窗口、隐藏事件版本、私屏只读及投票计数；新投影的公告前后链、跨局版本与网络授权仍待08b/c，非空提交状态待09 |
 | 08b 房间Socket订阅 | 增量通过 | Luna：room-realtime4 + contract-snapshots8 + member-presence5，17/17及typecheck。roomId握手、接管/撤销断开、同连接跨复盘及新局递增版本、隐藏事件不推帧、失效会话原因；复盘状态为传输fixture，不是再次真实玩法验收。HTTP尚未接入 |
-| 08c–13 | 待实施 | 下一步替换HTTP主入口并补公告前后链、生命周期维护和新协议网络验证。暂未变更3000/3001部署；3003有数据库副本但尚未启动2.1应用 |
+| 08c HTTP与维护接入 | 增量通过 | HTTP A 8例；真实公告前夜死者报名/发言/语音许可/投票/当选到公告1例；观战/维护10例；auth5+race1；目录与旧计时器回归12例。最终容器typecheck通过。旧join/watch已无入口；全局当前房间、logout区别、自然7天过期、媒体mock撤销、空房跨房清理均验证。未测外部LiveKit |
+| 09–13 | 待实施 | 房间写幂等/命令查询和提交状态、聊天去重、账号迁移、头像、资料目录与契约验收、候选构建/容量/切换尚未完成 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -37,3 +38,8 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 | 07b / b16849b | room-rounds、stable-room、screen-grants；类型检查亦覆盖06/07a最终测试 | 1f445907707ddc05ef5a32d5e8301058dbeee7124e392b655500ef637b8d40c9 / rounds.ts f19cc52f361c4ac679f731fe0e33f4fc58709ffc9f2562b863390adfcd1dc9f2 |
 | 08a / b80567c | contract-snapshots、knowledge、room-rounds | 488e6271eba89f38e84e612c2400caceb05dc4f370629d15c93a82ac403301ae / a69dd827583592c3a14ebee7336bee082f2dd07c7d3ef1b14ef873c9516ef822 |
 | 08b / d8fdb55 | room-realtime、contract-snapshots、member-presence；snapshot mock头像变更与窗口数组断言同步补强 | d0d1267994ab3a792eb0ba388a0ce05941cfed2f7d52f2994d4fe1f14759aa19 / cf7510b33757ab5c847e09b4b97b20b9718c3804dcb8191455c42af6fcb660bf |
+| 08c / f02c1e6 | v2-api、contract-foundation、contract-http-lifecycle；contract-knowledge-api；v2-spectators-api、v2-maintenance；auth-v2、auth-race；room-membership、empty-rooms 分批执行，未全量 | app.ts bf61075f0962869e351ffa4ff024da393eb5efe764e888fbfc272cc08ba555fc；auth.ts 6febd641499465c891300b73f9bb4d73a829ff5a49c5b46fe2e6adb7c0d8c1f8。最终观战测试8226cc85c7db7f39abe3736f391dadc8990c93845980fe228951d51aa05237e9；维护测试e6365c4a75e90ae6be3a78c840619dc3ee97461e33d4c5a16264f887820b47b5 |
+
+08c维护测试最初迁移删减过多且没有调用实际maintenance，主代理拒绝该证据；另一Luna按真实HTTP/maintenance补齐上述10例后通过。类型检查分别发现回调返回值兼容与两个测试helper的gameId:null断言错误，修正后通过，未弱化行为断言。
+
+3003开发实例现已运行：theater-death-contract-app-1，原生Node24启动成功，/healthz返回contractVersion=2.1/rulesVersion=2.0。Docker inspect确认server/contracts/tests等只读工作树挂载、data-contract-2.1独立读写；账号schema尚为1、头像与catalog等后续功能尚未接入。此健康检查仅证明导入/启动成功。3000/3001保持原镜像，尚未做候选切换。

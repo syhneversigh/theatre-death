@@ -1,178 +1,104 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import express from 'express';
-import { createServer, type Server } from 'node:http';
-import { io as ioClient } from 'socket.io-client';
-import { AccountStore } from '../server/v2/account-store.ts';
-import { createV2App } from '../server/v2/app.ts';
-import { createFakeClock, type FakeClock } from '../server/clock.ts';
-import { createLogStore, type LogStore } from '../server/log-store.ts';
+import { closeHarnesses, createRoom, enter, json, makeHarness, post, request, type HttpHarness, type User } from './contract-http-utils.ts';
 
-type User = { username: string; cookie: string; userId: string };
-type Harness = { app: ReturnType<typeof createV2App>; clock: FakeClock; users: User[]; server: Server; base: string };
-const harnesses: Harness[] = [];
+afterEach(closeHarnesses);
 
-afterEach(async () => {
-  for (const h of harnesses.splice(0)) {
-    h.app.close();
-    await new Promise<void>((resolve) => h.server.close(() => resolve()));
+async function fillRoom(h: HttpHarness, count = 13) {
+  const created = await createRoom(h);
+  expect(created.response.status).toBe(201);
+  const room = created.body as { roomId: string; roomCode: string; gameId: null; memberId: string; kind: string; playerId: null };
+  expect(room).toMatchObject({ gameId: null, kind: 'formal', playerId: null });
+  for (let index = 1; index < count; index += 1) {
+    const joined = await enter(h, room.roomCode, h.users[index]!, `enter-${index}`);
+    expect(joined.response.status).toBe(200);
+    expect(joined.body).toMatchObject({ roomId: room.roomId, roomCode: room.roomCode, gameId: null, kind: 'formal', playerId: null });
   }
-});
-
-async function makeHarness(count = 14): Promise<Harness> {
-  const accounts = new AccountStore(':memory:');
-  const clock = createFakeClock(1_000);
-  const logStore: LogStore = createLogStore(':memory:');
-  const users: User[] = [];
-  for (let index = 1; index <= count; index += 1) {
-    const username = `v2_user_${index}`;
-    const account = accounts.register(username, 'dummy-hash', accounts.invite().token);
-    const session = accounts.createSession(account.id);
-    users.push({ username, userId: account.id, cookie: `td_account_v2=${session.token}` });
-  }
-  const app = createV2App({ accounts, clock, logStore, origin: 'http://allowed.test' });
-  const server = createServer(app.app);
-  app.hub.attachV2(server);
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address() as { port: number };
-  const h = { app, clock, users, server, base: `http://127.0.0.1:${address.port}` };
-  harnesses.push(h);
-  return h;
-}
-
-async function request(h: Harness, path: string, init: RequestInit = {}, user?: User): Promise<Response> {
-  const headers = new Headers(init.headers);
-  if (user) headers.set('cookie', user.cookie);
-  return fetch(`${h.base}${path}`, { ...init, headers });
-}
-
-async function json(response: Response): Promise<Record<string, unknown>> {
-  return (await response.json()) as Record<string, unknown>;
-}
-
-function post(body: unknown): RequestInit {
-  return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
-}
-
-async function createRoom(h: Harness, user = h.users[0]!): Promise<{ roomCode: string; gameId: string; playerId: string }> {
-  const response = await request(h, '/api/v2/rooms', post({ nickname: user.username }), user);
-  expect(response.status).toBe(201);
-  return (await json(response)) as { roomCode: string; gameId: string; playerId: string };
-}
-
-async function fillAndStart(h: Harness) {
-  const room = await createRoom(h);
-  for (const user of h.users.slice(1, 13)) {
-    const joined = await request(h, `/api/v2/rooms/${room.roomCode}/join`, post({ nickname: user.username }), user);
-    expect(joined.status).toBe(201);
-  }
-  for (const user of h.users.slice(0, 13)) {
-    const ready = await request(h, `/api/v2/rooms/${room.roomCode}/ready`, post({ ready: true }), user);
-    expect(ready.status).toBe(200);
-  }
-  const started = await request(h, `/api/v2/rooms/${room.roomCode}/start`, post({}), h.users[0]);
-  expect(started.status).toBe(200);
   return room;
 }
 
+async function startRoom(h: HttpHarness, count = 13) {
+  const room = await fillRoom(h, count);
+  for (let index = 0; index < count; index += 1) {
+    const ready = await request(h, `/api/v2/rooms/${room.roomCode}/ready`, post({ requestId: `ready-${index}`, ready: true }), h.users[index]);
+    expect(ready.status).toBe(200);
+  }
+  const started = await request(h, `/api/v2/rooms/${room.roomCode}/start`, post({ requestId: 'start-1' }), h.users[0]);
+  expect(started.status).toBe(200);
+  return { room, started: await json(started) };
+}
+
+function userForPlayer(h: HttpHarness, roomId: string, playerId: string): User {
+  const room = h.app.directory.byId.get(roomId)!;
+  const participant = [...room.participants.values()].find((seat) => seat.playerId === playerId)!;
+  return h.users.find((user) => user.userId === participant.userId)!;
+}
+
 describe('v2 HTTP core', () => {
-  it('keeps old API unreachable, requires login, and supports create/join with duplicate-seat rejection', async () => {
+  it('uses the roomId contract, requestId mutations, username profiles, one current room, and spectator promotion', async () => {
     const h = await makeHarness();
     expect((await request(h, '/api/rooms')).status).toBe(404);
-    expect((await request(h, '/api/v2/rooms', post({ nickname: '匿名' }))).status).toBe(401);
-    const room = await createRoom(h);
-    const duplicate = await request(h, `/api/v2/rooms/${room.roomCode}/join`, post({ nickname: '重复' }), h.users[0]);
-    expect(duplicate.status).toBe(409);
-    expect((await json(duplicate)).error).toMatchObject({ code: 'already_joined' });
-    const joined = await request(h, `/api/v2/rooms/${room.roomCode}/join`, post({ nickname: '玩家2' }), h.users[1]);
-    expect(joined.status).toBe(201);
+    expect((await request(h, '/api/v2/rooms', post({}))).status).toBe(401);
+    expect((await request(h, '/api/v2/rooms', post({ nickname: 'missing-request-id' }), h.users[0])).status).toBe(400);
+    const room = await fillRoom(h);
+    const spectator = await enter(h, room.roomCode, h.users[13]!, 'spectator-enter');
+    expect(spectator.response.status).toBe(200);
+    expect(spectator.body).toMatchObject({ kind: 'public_spectator', playerId: null });
+    const released = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: 'formal-leave-for-promote' }), h.users[12]);
+    expect(released.status).toBe(200);
+    const promotion = await request(h, `/api/v2/rooms/${room.roomCode}/promote`, post({ requestId: 'promote-1' }), h.users[13]);
+    expect(promotion.status).toBe(200);
+    expect(await json(promotion)).toMatchObject({ kind: 'formal', playerId: null });
+    const duplicate = await createRoom(h, h.users[0], 'create-other-room');
+    expect(duplicate.response.status).toBe(409);
+    expect(duplicate.body.error).toMatchObject({ code: 'already_in_room' });
+    const rooms = await request(h, '/api/v2/me/rooms', {}, h.users[0]);
+    expect(rooms.status).toBe(200);
+    expect((await json(rooms)).rooms[0]).toMatchObject({ roomId: room.roomId, activeHere: true, controlling: true, kind: 'formal', playerId: null });
+    const secondSession = h.accounts.createSession(h.users[0]!.userId);
+    const otherDevice: User = { ...h.users[0]!, cookie: `td_account_v2=${secondSession.token}`, sessionId: secondSession.session.id };
+    const otherRooms = await request(h, '/api/v2/me/rooms', {}, otherDevice);
+    expect((await json(otherRooms)).rooms[0]).toMatchObject({ activeHere: false, controlling: false, requiresTakeover: true });
   });
 
-  it('lobby leave releases a non-host seat and host leave dissolves the room', async () => {
+  it('starts without online presence, keeps different-player request ids separate, and rejects a genuinely late window command', async () => {
     const h = await makeHarness();
-    const room = await createRoom(h);
-    expect((await request(h, `/api/v2/rooms/${room.roomCode}/join`, post({ nickname: 'player2' }), h.users[1])).status).toBe(201);
-    const playerLeave = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({}), h.users[1]);
-    expect(playerLeave.status).toBe(200);
-    expect(await json(playerLeave)).toMatchObject({ left: true, seatRetained: false });
-    const hostLeave = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({}), h.users[0]);
-    expect(hostLeave.status).toBe(200);
-    expect(await json(hostLeave)).toMatchObject({ left: true, seatRetained: false });
-    expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[0])).status).toBe(404);
+    const { room, started } = await startRoom(h);
+    expect(started).toMatchObject({ started: true, roomId: room.roomId });
+    expect(typeof started.gameId).toBe('string');
+    const stable = h.app.directory.byId.get(room.roomId)!;
+    const runtime = stable.runtime!;
+    const state = runtime.state!;
+    const door = state.players.find((player) => player.roleId === 'door')!;
+    const death = state.players.find((player) => player.roleId === 'death')!;
+    const doorUser = userForPlayer(h, room.roomId, door.playerId);
+    const deathUser = userForPlayer(h, room.roomId, death.playerId);
+    const target = state.players.find((player) => player.playerId !== door.playerId && player.life === 'alive')!.playerId;
+    const guard = runtime.driver!.windows().find((window) => window.id === 'guard')!;
+    const faction = runtime.driver!.windows().find((window) => window.id === 'faction')!;
+    const guardResponse = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'same-request', gameId: started.gameId, action: 'SUBMIT_GUARD', windowInstanceId: guard.instanceId, targets: [target] }), doorUser);
+    const proposalResponse = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'same-request', gameId: started.gameId, action: 'EDIT_PROPOSAL', windowInstanceId: faction.instanceId, targets: [target] }), deathUser);
+    expect(await json(guardResponse)).toMatchObject({ requestId: 'same-request', status: 'accepted' });
+    expect(await json(proposalResponse)).toMatchObject({ requestId: 'same-request', status: 'accepted' });
+    const civilian = state.players.find((player) => player.roleId === 'civilian')!;
+    const civilianUser = userForPlayer(h, room.roomId, civilian.playerId);
+    const forbidden = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'forbidden', gameId: started.gameId, action: 'SUBMIT_GUARD', windowInstanceId: guard.instanceId, targets: [target] }), civilianUser);
+    expect(await json(forbidden)).toMatchObject({ requestId: 'forbidden', status: 'rejected', code: 'action_forbidden' });
+    h.clock.elapse(Math.max(0, guard.closesAt - h.clock.now()) + 1);
+    const late = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'late', gameId: started.gameId, action: 'SUBMIT_GUARD', windowInstanceId: guard.instanceId, targets: [target] }), doorUser);
+    expect(await json(late)).toMatchObject({ requestId: 'late', status: 'rejected', code: 'window_closed' });
+    expect([...stable.members.values()].every((member) => member.presence === 'offline')).toBe(true);
   });
 
-  it('login session 2 does not take over until explicit takeover', async () => {
+  it('does not dissolve a playing room when its host leaves and retains the participant seat', async () => {
     const h = await makeHarness();
-    const room = await createRoom(h);
-    const accountId = h.users[0]!.userId;
-    const second = h.app.access.get(room.gameId)!.accounts.createSession(accountId);
-    const session2: User = { ...h.users[0]!, cookie: `td_account_v2=${second.token}` };
-    expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, session2)).status).toBe(403);
-    const takeover = await request(h, `/api/v2/rooms/${room.roomCode}/takeover`, post({}), session2);
-    expect(takeover.status).toBe(200);
-    expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, h.users[0])).status).toBe(403);
-    const oldCommand = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'old', action: 'END_SPEECH', windowInstanceId: 'none' }), h.users[0]);
-    expect(oldCommand.status).toBe(403);
-  });
-
-  it('leave retains the player seat and the account can explicitly take it over again', async () => {
-    const h = await makeHarness();
-    const room = await fillAndStart(h);
-    const left = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({}), h.users[0]);
+    const { room, started } = await startRoom(h);
+    const left = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: 'host-leave' }), h.users[0]);
     expect(left.status).toBe(200);
     expect(await json(left)).toMatchObject({ left: true, seatRetained: true });
-    const second = h.app.access.get(room.gameId)!.accounts.createSession(h.users[0]!.userId);
-    const session2: User = { ...h.users[0]!, cookie: `td_account_v2=${second.token}` };
-    expect((await request(h, `/api/v2/rooms/${room.roomCode}/takeover`, post({}), session2)).status).toBe(200);
-  });
-
-  it('uses real role windows, keeps request ids per player, and rejects a genuinely late command', async () => {
-    const h = await makeHarness();
-    const room = await fillAndStart(h);
-    const meta = h.app.access.get(room.gameId)!;
-    const doorId = meta.room.state!.players.find((player) => player.roleId === 'door')!.playerId;
-    const deathId = meta.room.state!.players.find((player) => player.roleId === 'death')!.playerId;
-    const door = h.users.find((user) => user.userId === meta.seats.get(doorId)!.userId)!;
-    const death = h.users.find((user) => user.userId === meta.seats.get(deathId)!.userId)!;
-    const guardWindow = meta.room.driver!.windows().find((window) => window.id === 'guard')!;
-    const factionWindow = meta.room.driver!.windows().find((window) => window.id === 'faction')!;
-    const guardTarget = meta.room.state!.players.find((player) => player.playerId !== doorId && player.life !== 'dead')!.playerId;
-    const guardResponse = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'same-request', action: 'SUBMIT_GUARD', windowInstanceId: guardWindow.instanceId, targets: [guardTarget] }), door);
-    const proposalResponse = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'same-request', action: 'EDIT_PROPOSAL', windowInstanceId: factionWindow.instanceId, targets: [guardTarget] }), death);
-    const guardResult = await json(guardResponse);
-    const proposalResult = await json(proposalResponse);
-    expect(guardResult).toMatchObject({ requestId: 'same-request', status: 'accepted' });
-    expect(proposalResult).toMatchObject({ requestId: 'same-request', status: 'accepted' });
-    expect(meta.room.driver!.proposalState(deathId)?.revision).toBeGreaterThan(0);
-
-    const civilianId = meta.room.state!.players.find((player) => player.roleId === 'civilian')!.playerId;
-    const civilian = h.users.find((user) => user.userId === meta.seats.get(civilianId)!.userId)!;
-    const disabled = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'disabled', action: 'SUBMIT_GUARD', windowInstanceId: guardWindow.instanceId, targets: [guardTarget] }), civilian);
-    expect(await json(disabled)).toMatchObject({ requestId: 'disabled', status: 'rejected', code: 'action_forbidden' });
-
-    h.clock.elapse(Math.max(0, guardWindow.closesAt - h.clock.now()) + 1);
-    const late = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'late', action: 'SUBMIT_GUARD', windowInstanceId: guardWindow.instanceId, targets: [guardTarget] }), door);
-    expect(await json(late)).toMatchObject({ requestId: 'late', status: 'rejected', code: 'window_closed' });
-  });
-
-  it('disconnects the old realtime session after HTTP takeover', async () => {
-    const h = await makeHarness();
-    const room = await createRoom(h);
-    const meta = h.app.access.get(room.gameId)!;
-    const socket = ioClient(h.base, { path: '/api/v2/socket.io', auth: { gameId: room.gameId }, extraHeaders: { cookie: h.users[0]!.cookie }, reconnection: false });
-    let frames = 0;
-    socket.on('view_updated', () => { frames += 1; });
-    await new Promise<void>((resolve, reject) => { socket.once('connect', () => resolve()); socket.once('connect_error', reject); });
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    const before = frames;
-    const session2 = meta.accounts.createSession(h.users[0]!.userId);
-    const second: User = { ...h.users[0]!, cookie: `td_account_v2=${session2.token}` };
-    const disconnected = new Promise<void>((resolve) => socket.once('disconnect', () => resolve()));
-    const takeover = await request(h, `/api/v2/rooms/${room.roomCode}/takeover`, post({}), second);
-    expect(takeover.status).toBe(200);
-    await disconnected;
-    h.app.hub.broadcaster.emitGameEvents(room.gameId, [], meta.room.state!);
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(frames).toBe(before);
-    socket.disconnect();
+    expect(h.app.directory.byCode.has(room.roomCode)).toBe(true);
+    expect(h.app.directory.byId.get(room.roomId)?.phase).toBe('playing');
+    expect(h.app.directory.byId.get(room.roomId)?.participants.has(h.users[0]!.userId)).toBe(true);
+    const stale = await request(h, `/api/v2/rooms/${room.roomCode}/command`, post({ requestId: 'stale', gameId: started.gameId, action: 'END_SPEECH', windowInstanceId: 'none' }), h.users[0]);
+    expect(stale.status).toBe(403);
   });
 });

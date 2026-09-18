@@ -25,7 +25,7 @@ let stopping = false;
 const shutdown = () => {
   if (stopping) return; stopping = true;
   backend.close();
-  server.close(() => { void backend.media.drain().finally(() => { accounts.close(); logStore.close(); process.exit(0); }); });
+  server.close(() => { void backend.drain().finally(() => { accounts.close(); logStore.close(); process.exit(0); }); });
   setTimeout(() => process.exit(1), 8000).unref();
 };
 process.on('SIGTERM', shutdown); process.on('SIGINT', shutdown);

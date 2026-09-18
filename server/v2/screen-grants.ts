@@ -42,7 +42,7 @@ export class ScreenGrants {
       member.kind = 'private_spectator';
       access.invitations.delete(key);
       return { memberId: member.memberId, gameId, subjectPlayerId: invitation.subject, kind: member.kind };
-    });
+    }, session);
   }
   revoke(room: StableRoom, session: AccountSession, gameId: string) {
     return this.directory.mutate(room, () => this.revokeSubject(room, this.actor(room, session, gameId)));

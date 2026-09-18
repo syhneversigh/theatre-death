@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { ApiError } from './errors.ts';
+import type { Profile } from '../../contracts/v2.ts';
 
 const token = () => randomBytes(32).toString('base64url');
 const digest = (raw: string) => createHash('sha256').update(raw).digest('hex');
@@ -37,6 +38,11 @@ export class AccountStore {
   byName(username: string): Account | null {
     const row = this.db.prepare('SELECT id, username, password_hash FROM accounts WHERE username=?').get(username.toLowerCase());
     return row ? { id: String(row.id), username: String(row.username), passwordHash: String(row.password_hash) } : null;
+  }
+  profile(userId: string): Profile {
+    const row = this.db.prepare('SELECT username FROM accounts WHERE id=?').get(userId);
+    if (!row) throw new ApiError(404, 'account_not_found');
+    return { userId, username: String(row.username), avatarUrl: null, profileVersion: 0 };
   }
   invite(purpose: 'register' | 'reset' = 'register', username?: string, ttl = purpose === 'register' ? WEEK : 1800_000) {
     const user = purpose === 'reset' ? this.byName(username ?? '') : null;

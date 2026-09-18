@@ -18,7 +18,9 @@ export function textField(value: unknown, name: string, min = 1, max = 128): str
   if (typeof value !== 'string' || value.length < min || value.length > max) throw new ApiError(400, `invalid_${name}`);
   return value;
 }
-export function authRouter(store: AccountStore, secure: boolean, onRevoked: (userId: string) => void, cookieName = COOKIE) {
+export interface AccountRevocation { reason: 'logout' | 'credentials_changed'; sessionId?: string }
+// Callback results are ignored; await also supports asynchronous revocation cleanup.
+export function authRouter(store: AccountStore, secure: boolean, onRevoked: (userId: string, event: AccountRevocation) => unknown, cookieName = COOKIE) {
   const router = Router();
   const limits = new RateLimits(store.now);
   const cookieOptions = { httpOnly: true, secure, sameSite: 'strict' as const, path: '/api/v2', maxAge: 7 * 86400_000 };
@@ -50,9 +52,9 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     const session = requireAccount(store, req, cookieName);
     res.json({ userId: session.userId, expiresAt: session.expiresAt });
   });
-  router.post('/logout', (req, res) => {
+  router.post('/logout', async (req, res) => {
     const session = requireAccount(store, req, cookieName);
-    store.logout(session.id); onRevoked(session.userId);
+    store.logout(session.id); await onRevoked(session.userId, { reason: 'logout', sessionId: session.id });
     res.clearCookie(cookieName, { ...cookieOptions, maxAge: undefined }).json({ loggedOut: true });
   });
   router.post('/reset-password', async (req, res) => {
@@ -60,7 +62,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     const reset = textField(req.body?.token, 'token');
     const password = req.body?.password; validatePassword(password);
     if (!store.validInvite(reset, 'reset')) throw new ApiError(403, 'invalid_reset_token');
-    const userId = store.resetPassword(reset, await hashPassword(password)); onRevoked(userId);
+    const userId = store.resetPassword(reset, await hashPassword(password)); await onRevoked(userId, { reason: 'credentials_changed' });
     res.json({ reset: true });
   });
   router.post('/change-password', async (req, res) => {
@@ -73,7 +75,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     const hash = await hashPassword(password);
     // An async password calculation must not revive a concurrently revoked session.
     requireAccount(store, req, cookieName);
-    store.changePassword(session.userId, hash); onRevoked(session.userId);
+    store.changePassword(session.userId, hash); await onRevoked(session.userId, { reason: 'credentials_changed' });
     res.clearCookie(cookieName, { ...cookieOptions, maxAge: undefined }).json({ changed: true });
   });
   return router;
