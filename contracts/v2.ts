@@ -66,7 +66,7 @@ export interface PrivateGameDTO {
   self: SelfDTO; events: EventDTO[];
   factionRoom: { roomId: string; readOnly: boolean; canWrite: boolean; members: readonly { playerId: string; seat: number; readOnly: boolean }[] } | null;
   targets: Partial<Record<CommandAction, TargetSelection>>;
-  proposal: { pool: 'death' | 'spirit' | 'joint'; activeMemberIds: readonly string[]; revision: number; targetPlayerIds: readonly string[]; confirmedBy: readonly string[]; locked: boolean } | null;
+  proposal: { pool: 'death' | 'spirit' | 'joint'; activeMemberIds: readonly string[]; revision: number; targetPlayerIds: readonly string[]; confirmedBy: readonly string[]; locked: boolean; effective: { revision: number | null; targetPlayerIds: readonly string[]; basis: 'unanimous' | 'latest_legal' | 'empty' } } | null;
 }
 export type RoomAction = 'ready' | 'start' | 'promote' | 'leave' | 'transferHost' | 'dissolve' | 'endReview' | 'kickFormal' | 'kickSpectator' | 'inviteSecondScreen' | 'revokeSecondScreen';
 export interface SnapshotCapabilities {

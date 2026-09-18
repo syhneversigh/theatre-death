@@ -34,6 +34,8 @@ Socket.IO 路径 `/api/v2/socket.io`，握手 auth 传 roomId。`view_updated` �
 
 windows 是并行窗口数组，不能把 windows[0] 当作全场唯一任务。使用任务给出的 windowInstanceId、允许动作及合法目标；目标重复是否允许按服务端返回配额表达。倒计时以 closesAt-serverTime 与收到快照的本地单调时钟估算；客户端倒计时为0只影响展示，最终由服务端检查截止。
 
+团队proposal中的revision/targetPlayerIds/confirmedBy是最新草稿，locked表示存在全员确认候选（可能比最新草稿早）。effective提供此刻若截止将采用的revision、targetPlayerIds和basis（unanimous/latest_legal/empty）。主动空刀具有非空revision；没有可用提交时revision=null。前端应同时表达草稿与截止候选，不能把旧方案的locked状态标在未确认的新草稿上。
+
 ## 开发代理与头像
 
 开发前端使用同源代理转发 `/api/v2`（包括 WebSocket）到后端。浏览器 origin 必须与后端 PUBLIC_BASE_URL 一致；HTTP 带 credentials，Socket 使用 withCredentials。不要开放通配 CORS 绕过配置。开发3003使用独立 cookie `td_account_contract_21`，候选3001使用 `td_account_v2`。端口不同不能隔离 Cookie，因此 cookie 名不能相同。

@@ -42,6 +42,11 @@ export interface ProposalView {
   readonly targetPlayerIds: readonly string[];
   readonly confirmedBy: readonly string[];
   readonly locked: boolean;
+  readonly effective: {
+    readonly revision: number | null;
+    readonly targetPlayerIds: readonly string[];
+    readonly basis: 'unanimous' | 'latest_legal' | 'empty';
+  };
 }
 
 export interface NightStepResult {
@@ -526,13 +531,16 @@ export function createNightDriver(options: {
       const proposal = pool.get();
       const latest =
         proposal.versions.length > 0 ? proposal.versions[proposal.versions.length - 1] : null;
+      const locked = lockedVersion(proposal, pool.memberIds);
+      const effective = resolvedProposal(proposal, pool.memberIds, state!.ruleset.teamConfirm === 'unanimous_or_latest');
       return {
         pool: pool.kind,
         activeMemberIds: pool.memberIds,
         revision: latest?.revision ?? 0,
         targetPlayerIds: latest?.targetPlayerIds ?? [],
         confirmedBy: latest?.confirmedBy ?? [],
-        locked: lockedVersion(proposal, pool.memberIds) !== null,
+        locked: locked !== null,
+        effective: { revision: effective?.revision ?? null, targetPlayerIds: effective?.targetPlayerIds ?? [], basis: locked ? 'unanimous' : effective ? 'latest_legal' : 'empty' },
       };
     },
     windows() {

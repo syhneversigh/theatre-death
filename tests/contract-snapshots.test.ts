@@ -171,4 +171,28 @@ describe('v2 RoomSnapshot contract', () => {
     expect(spectatorView.tasks).toEqual([]);
     expect(spectatorView.windows).toEqual([]);
   });
+
+  it('projects effective proposal state to the player view while keeping proposal/private data out of public spectators', async () => {
+    const f = setup();
+    const { room, players } = await fullMatch(f, 'snapshot_effective_proposal');
+    const runtime = room.runtime!;
+    const spirits = players.filter((player) => {
+      const playerId = room.participants.get(player.userId)!.playerId;
+      return runtime.state!.players.find((item) => item.playerId === playerId)?.roleId === 'spirit';
+    });
+    const firstSpirit = spirits[0]!;
+    const secondSpirit = spirits[1]!;
+    const firstTarget = runtime.state!.players[0]!.playerId;
+    const factionWindow = runtime.driver!.windows().find((window) => window.id === 'faction')!;
+    expect(runtime.driver!.submit({ type: 'EDIT_PROPOSAL', playerId: room.participants.get(firstSpirit.userId)!.playerId, targets: [firstTarget], windowInstanceId: factionWindow.instanceId }).accepted).toBe(true);
+    expect(runtime.driver!.submit({ type: 'EDIT_PROPOSAL', playerId: room.participants.get(secondSpirit.userId)!.playerId, targets: [], windowInstanceId: factionWindow.instanceId }).accepted).toBe(true);
+    const playerView = f.snapshots.read(room, secondSpirit.session);
+    expect(playerView.private?.proposal?.effective).toEqual({ revision: 2, targetPlayerIds: [], basis: 'latest_legal' });
+
+    const spectator = account(f.accounts, f.profiles, 'snapshot_effective_public');
+    await f.directory.enter(room, spectator.session);
+    const publicView = f.snapshots.read(room, spectator.session);
+    expect(publicView.private).toBeNull();
+    expect('proposal' in publicView).toBe(false);
+  });
 });
