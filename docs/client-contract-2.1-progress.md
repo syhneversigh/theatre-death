@@ -11,7 +11,8 @@
 | 05 房主治理 | 增量通过 | Luna：room-governance5 + member-presence5 + room-membership5；typecheck通过。审阅后补强双候选加入顺序、旧房主在线返回、拒绝非房主/离线/观众目标、复盘解散拒绝；单文件复跑5/5 |
 | 06 零正式成员回收 | 增量通过 | Luna：初始empty5 + membership5 + governance5及typecheck；审阅补上未执行回调时入口拒绝、死亡/复盘保留，最终empty7/7。最后仅新增测试后未重复typecheck，后续类型门禁覆盖；不再以标题声称覆盖 |
 | 07a 对局绑定第二屏 | 增量通过 | Luna：screen-grants5 + membership5 + access6及typecheck；补强真实离开、旧设备兑换失败不消费token、媒体撤销spy后单文件5/5。只验证领域层，Socket撤销待08 |
-| 07b–13 | 待实施 | 见计划，暂未变更 3000/3001 部署 |
+| 07b 复盘回大厅与连续两局 | 增量通过 | Luna：room-rounds1完整链路 + stable-room5 + screen-grants5，11/11及typecheck通过。两次真实night/day结算human胜，首局实际用莱莱可技能；新局ID/技能/聊天/回执/邀请隔离，保留当前成员及连接。尚未验证HTTP/Socket跨局 |
+| 08–13 | 待实施 | 下一步接入完整快照与HTTP/Socket。暂未变更3000/3001部署；3003有数据库副本但尚未启动2.1应用 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -31,3 +32,4 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 | 05 / 21cf852 | room-governance、member-presence、room-membership；补强后仅治理复跑 | a69e27e95b9e257d0450f98d41532bc33239dc2d29a0b6127ae1c51721b04307 / a2561679df5f67a33dc1e650a86e84dfcaef79018e1a2ca40aeb55afe13541e3 |
 | 06 / 9319d3d | empty-rooms、room-membership、room-governance；补强后empty-rooms7例复跑 | 5729d3a80d10871d928d18ea313bc2a6f59d4e1f02aa339eab01c29f70937269 / 9e61c52944c855b2b653cac70ff68d20b6b1e4e0904c16e656b40b2e8fefcb6c |
 | 07a / f3a23d2 | screen-grants、room-membership、access-v2；审阅补强后screen-grants5例复跑 | 3104edc71c5b6e5c5a60ad3456bd0f2872b1b9a3eb4c3c8e37020374bb4468a0 / c2b30c0158e6e288c1b38bc966f597e3074bcb0018cad914405dcc1c3363a01d |
+| 07b / b16849b | room-rounds、stable-room、screen-grants；类型检查亦覆盖06/07a最终测试 | 1f445907707ddc05ef5a32d5e8301058dbeee7124e392b655500ef637b8d40c9 / rounds.ts f19cc52f361c4ac679f731fe0e33f4fc58709ffc9f2562b863390adfcd1dc9f2 |

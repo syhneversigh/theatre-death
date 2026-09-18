@@ -10,6 +10,7 @@ export interface DirectoryDeps extends StableRoomDeps {
   control: (room: StableRoom, sessionId: string | null, reason: ControlReason) => void;
   removed?: (room: StableRoom) => void;
   beforeMutation?: (room: StableRoom) => void;
+  closedMatch?: (gameId: string) => void;
 }
 
 /** Membership transactions always acquire the directory queue before a room queue.

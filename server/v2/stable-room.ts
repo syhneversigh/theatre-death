@@ -51,6 +51,8 @@ export class StableRoom {
   readonly participants = new Map<string, Participant>(); // account -> frozen current-match seat
   hostMemberId: string | null = null;
   runtime: Room | null = null;
+  matchStartedAt: number | null = null;
+  matchEndedAt: number | null = null;
   access: RoomAccess | null = null;
   receipts = new ReceiptStore();
   emptyDeadline: number | null = null;
@@ -80,6 +82,7 @@ export class StableRoom {
     if (members.some((m) => !m.ready)) throw new ApiError(409, 'not_ready');
     const runtime = this.deps.registry.createMatch(this.code, members.map((m) => ({ nickname: m.username })), this.ruleset, this);
     this.runtime = runtime;
+    this.matchStartedAt = this.deps.clock.now(); this.matchEndedAt = null;
     this.receipts = new ReceiptStore();
     this.participants.clear();
     const access = new RoomAccess(runtime, this.deps.accounts, () => this.deps.clock.now(), (identity) => this.deps.revokeMedia(runtime.gameId, identity));
@@ -92,11 +95,14 @@ export class StableRoom {
     for (const member of this.members.values()) if (member.kind !== 'formal' && member.sessionId && this.deps.accounts.sessionActive(member.sessionId)) {
       access.watch({ id: member.sessionId, userId: member.userId, expiresAt: Number.MAX_SAFE_INTEGER });
     }
-    this.deps.logStore.recordMatch({ roomId: this.roomId, gameId: runtime.gameId, startedAt: this.deps.clock.now() });
+    this.deps.logStore.recordMatch({ roomId: this.roomId, gameId: runtime.gameId, startedAt: this.matchStartedAt });
     this.deps.registry.startGame(runtime);
     return runtime;
   }
   recordCompletion(): void {
-    if (this.runtime?.state?.win) this.deps.logStore.finishMatch(this.runtime.gameId, 'completed', this.deps.clock.now());
+    if (this.runtime?.state?.win) {
+      this.matchEndedAt ??= this.deps.clock.now();
+      this.deps.logStore.finishMatch(this.runtime.gameId, 'completed', this.matchEndedAt);
+    }
   }
 }
