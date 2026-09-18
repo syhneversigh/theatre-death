@@ -1,0 +1,152 @@
+{
+  "candidate": "v2.1.0-rc.1",
+  "contractVersion": "2.1",
+  "rulesVersion": "2.0",
+  "sourceCommit": "41d18369d4570b17230376ee54335664578027c6",
+  "imageIndexDigest": "sha256:e22a95b5dd7a67f9640b77202164ac4c3f955c558e2332e82d1b351121ce59f3",
+  "imageManifest": "sha256:953523903b3ace47f8d8c5fe33fe4e21a880decf07ac2a479907eec5c9c40124",
+  "runtimeFiles": 81,
+  "runtimeTreeSha256": "d7b7753f0b885e0b62ebb6aeac3234cb7c91799e9633a28380071ce6ffb3d83c",
+  "build": {
+    "node": "v24.15.0",
+    "testFiles": 67,
+    "tests": 431,
+    "typecheck": "passed",
+    "fullUnitApiGates": 1,
+    "uiE2E": "not_run"
+  },
+  "capacity": {
+    "startedAt": "2026-09-18T16:33:51.446Z",
+    "finishedAt": "2026-09-18T16:38:53.474Z",
+    "durationMs": 300000,
+    "observedDurationMs": 300000,
+    "contractVersion": "2.1",
+    "clients": {
+      "accounts": 100,
+      "activeSockets": 50,
+      "rooms": 2,
+      "players": 26,
+      "publicSpectators": 24
+    },
+    "ordinaryApi": {
+      "samples": 5918,
+      "p95Ms": 242.81397099999595,
+      "excluded": [
+        "/healthz",
+        "/api/v2/auth/login",
+        "/api/v2/diagnostics"
+      ]
+    },
+    "diagnostics": {
+      "samples": 30,
+      "peakRss": 294817792,
+      "maxEventLoopP99Ms": 74.186751
+    },
+    "sockets": {
+      "created": 50,
+      "connected": 50,
+      "disconnectedIncludingCleanup": 50,
+      "activeAtEnd": 50,
+      "minActiveDuringLoad": 50
+    },
+    "errors": {
+      "count": 0,
+      "http5xxOrNetwork": 0,
+      "unexpectedHttp": 0,
+      "socket": 0,
+      "receiptMismatches": 0,
+      "privacyViolations": 0,
+      "selfViolations": 0,
+      "samples": []
+    },
+    "thresholds": {
+      "ordinaryApiP95Ms": 300,
+      "eventLoopP99Ms": 100,
+      "rssBytes": 1000000000
+    }
+  },
+  "auxiliary": {
+    "contractVersion": "2.1",
+    "candidateRevision": "41d18369d4570b17230376ee54335664578027c6",
+    "login": {
+      "samples": 10,
+      "concurrency": 2,
+      "p95Ms": 374.845088,
+      "failures": 0,
+      "statuses": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ]
+    },
+    "avatar": {
+      "samples": 10,
+      "concurrency": 2,
+      "p95Ms": 19.84986099999992,
+      "failures": 0,
+      "versions": {
+        "load_061": 10,
+        "load_062": 10
+      },
+      "imageCheck": {
+        "status": 200,
+        "contentType": "image/webp",
+        "format": "webp",
+        "width": 256,
+        "height": 256,
+        "ok": true
+      }
+    }
+  },
+  "auxiliaryValidation": {
+    "validatedAt": "2026-09-18T16:54:35.121Z",
+    "resultFile": "auxiliary-candidate-41d1836.json",
+    "checks": {
+      "revision": true,
+      "loginSamples": true,
+      "loginConcurrency": true,
+      "loginStatuses": true,
+      "loginFailures": true,
+      "loginP95": true,
+      "avatarSamples": true,
+      "avatarConcurrency": true,
+      "avatarFailures": true,
+      "avatarP95": true,
+      "avatarImage": true,
+      "profileVersions": true
+    },
+    "exit0": true,
+    "collectorNotes": [
+      "First collector completed the HTTP requests but failed before writing because AUX_RESULT_PATH was not passed into the container.",
+      "Second collector completed a distinct successful batch after restarting load-app, wrote the result, then exited 1 because its final condition referenced report.imageCheck instead of report.avatar.imageCheck.",
+      "The two profileVersion=10 values reflect two successful batches of five PUT requests per account; this was an auxiliary check, not a repeat of the main capacity run."
+    ],
+    "originalReportUnchanged": true
+  },
+  "deployment": {
+    "host": "127.0.0.1",
+    "port": 3001,
+    "cpu": 2,
+    "memoryBytes": 4294967296,
+    "sourceMounts": false,
+    "accountSchema": 2,
+    "auditSchema": 1,
+    "integrity": "ok",
+    "anonymousRoomsStatus": 401,
+    "old3000Status": 200,
+    "old3000Image": "sha256:d4ef39c208b61fc89e6885cba8cbf35437e06b839cc9aefc63f6cd76b49f7c93"
+  },
+  "scopeExclusions": [
+    "frontend UI",
+    "public deployment",
+    "real voice capacity",
+    "running game recovery after server restart"
+  ]
+}

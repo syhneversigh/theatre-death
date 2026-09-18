@@ -1,6 +1,6 @@
 # 前端接入契约 2.1
 
-实施中；当前完成范围见 [进度](client-contract-2.1-progress.md)。本文件随实现更新，候选验收前不应当作已全部可用的服务声明。
+契约2.1已交付本地候选v2.1.0-rc.1，运行于http://localhost:3001。固定源码/镜像、验证范围及回滚点见 [验收记录](client-contract-2.1-acceptance.md)，小步实施证据见 [进度](client-contract-2.1-progress.md)。新前端可按本契约开始对接。
 
 前端接入顺序：[OpenAPI请求响应](openapi-v2.1.json) → [动作参数及错误处理](client-contract-2.1-actions.md) → [事件字段与可见范围](client-contract-2.1-events.md) → [代理、Cookie、Socket与倒计时示例](client-contract-2.1-examples.md)。共享类型在contracts/v2.ts和contracts/catalog.ts；[完整JSON/mock索引](../tests/fixtures/contract-2.1/full-index.json)覆盖主要身份与阶段。运维与候选切换见 [运行手册](client-contract-2.1-runbook.md)。
 

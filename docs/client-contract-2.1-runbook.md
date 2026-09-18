@@ -1,10 +1,10 @@
 # 契约 2.1 开发与候选维护
 
-完整计划见 [实施计划](client-contract-2.1-plan.md)，真实验收范围见 [进度](client-contract-2.1-progress.md)。本次不部署前端或公网服务。
+契约2.1候选已部署到本机3001，[验收记录](client-contract-2.1-acceptance.md)固定源码、镜像与测试结果。完整计划见 [实施计划](client-contract-2.1-plan.md)，逐步证据见 [进度](client-contract-2.1-progress.md)。本次不部署前端或公网服务。
 
 ## 隔离开发
 
-旧网页3000使用固定上游镜像。旧后端候选3001在2.1候选验收完成前保留。开发3003使用独立 `data-contract-2.1` 与 Cookie `td_account_contract_21`；因为浏览器Cookie不按端口隔离，不能改成3001同名Cookie。账号迁移先用3001数据库的SQLite在线备份副本验证；禁止把开发副本覆盖到正式目录。
+旧网页3000使用固定上游镜像。3001现运行2.1候选，旧候选镜像与升级前数据仍保留。开发3003使用独立 `data-contract-2.1` 与 Cookie `td_account_contract_21`；因为浏览器Cookie不按端口隔离，不能改成3001同名Cookie。账号迁移先用副本验证；禁止把开发副本覆盖到正式目录。
 
 ```powershell
 docker compose -f deploy/compose.contract.yml run --rm --no-deps test node scripts/test-incremental.mjs tests/room-membership.test.ts
@@ -30,6 +30,8 @@ docker compose -f deploy/compose.contract.yml --profile app up -d app
 
 候选镜像、标签、schema、备份路径与实际命令在发布步骤完成后记录到进度/验收文档。没有这些证据时，本手册中的发布流程不等于已经部署完成。
 
+本次切换前旧3001各账号/审计表均为空，没有进行中对局。旧库及配置备份在 `D:/myApps/暴风雪剧院/v2-data-backup-20260919-before-contract-2.1`。新旧镜像分别读取升级副本/原备份副本的检查已完成。冷备份WAL库在完全只读目录中可能无法创建临时锁文件；做验证时先复制一份到可写临时目录，保留原备份不变。
+
 审计库新迁移使用 `PRAGMA user_version=1`，新增聊天消息和客户端关联ID列；历史消息列值为空，原记录保持。账号库有独立的 `schema_migrations` 版本表，两者的版本号不能混用。回滚的备份必须来自切换前同一时间段，不能拿早期开发副本替代。
 
 ## 头像依赖依据（供步骤11实现核对）
@@ -49,3 +51,59 @@ docker compose -f deploy/compose.contract.yml --profile app up -d app
 契约验证采用Ajv的2020-12导出校验OpenAPI3.1中的JSON Schema及实际响应样例；不能把草稿07验证器直接当成2020-12验证器。[Ajv版本支持](https://ajv.js.org/json-schema)
 
 动画输入在解码前检查PNG的acTL/fcTL/fdAT和WebP的ANIM/ANMF/VP8X动画标志，同时由解码器验证格式和页数。块长度也必须有效；不能只检查扩展名或HTTP Content-Type。[PNG第三版规范](https://www.w3.org/TR/png-3/) · [WebP容器规范](https://developers.google.com/speed/webp/docs/riff_container)
+
+## 本机启动与账号维护
+
+在PowerShell进入仓库。已保存的.env.v2使用固定镜像摘要，下面的up只启动该候选，不执行发布构建：
+
+```powershell
+Set-Location 'D:/myApps/暴风雪剧院/theater-death'
+$dockerCli = 'C:/Users/xumat/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe'
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml up -d app
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml ps
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml logs --tail 50 app
+```
+
+账号需要一次性注册邀请；无游客入口、没有网页管理员。以下命令在当前候选内操作账号库，输出token供注册或密码重置接口使用：
+
+```powershell
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml exec -T app node server/v2/admin.ts invite
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml exec -T app node server/v2/admin.ts revoke-invite INVITATION_ID
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml exec -T app node server/v2/admin.ts reset-password USERNAME
+```
+
+注册邀请默认7天，重置token默认30分钟。注册预检不消费token；账号创建时一次性消费。重置完成后全部旧会话失效。使用3003开发环境时将compose文件换为compose.contract.yml，确保操作的是独立开发账号库。
+
+停止服务使用同一compose的stop app。重启保留账号、会话、头像和审计，进行中的内存对局不会恢复，因此先确认没有进行中对局。
+
+## 配套回滚示例
+
+此操作会回到备份时点；先保留当前数据，以便处理切换后新增的账号/头像。只在需要回滚时执行，本文没有对已上线候选实际执行回滚。
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$scopeRoot = [System.IO.Path]::GetFullPath('D:/myApps/暴风雪剧院')
+$repoPath = Join-Path $scopeRoot 'theater-death'
+$activeData = Join-Path $repoPath 'data-v2'
+$preservedData = Join-Path $scopeRoot ('v2-preserved-after-contract21-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$backupRoot = Join-Path $scopeRoot 'v2-data-backup-20260919-before-contract-2.1'
+foreach ($targetPath in @($activeData, $preservedData)) {
+  $resolvedPath = [System.IO.Path]::GetFullPath($targetPath)
+  if (-not $resolvedPath.StartsWith($scopeRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { throw '路径越出工作区' }
+}
+if (Test-Path -LiteralPath $preservedData) { throw '保留目录已经存在' }
+if (-not (Test-Path -LiteralPath (Join-Path $backupRoot 'data/accounts.sqlite'))) { throw '备份不完整' }
+if ((Get-Item -LiteralPath $activeData).Attributes -band [System.IO.FileAttributes]::ReparsePoint) { throw '数据目录为链接，先核对真实位置' }
+Set-Location $repoPath
+$dockerCli = 'C:/Users/xumat/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe'
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml stop app
+if ($LASTEXITCODE -ne 0) { throw '服务停止失败' }
+Move-Item -LiteralPath $activeData -Destination $preservedData
+Copy-Item -LiteralPath (Join-Path $backupRoot 'data') -Destination $activeData -Recurse
+Copy-Item -LiteralPath (Join-Path $backupRoot 'deployment.env.v2') -Destination (Join-Path $repoPath '.env.v2')
+$env:V2_IMAGE = 'sha256:c08b5617b6e018479f1c50d902d42114561d55483e8cca047db9292ba248e913'
+& $dockerCli compose --env-file .env.v2 -f deploy/compose.v2.release.yml up -d --no-deps app
+if ($LASTEXITCODE -ne 0) { throw '旧候选启动失败' }
+```
+
+回滚后检查health与对应schema；保留新数据目录和备份。不要仅换旧镜像而继续挂载schema2，旧程序已实测会拒绝启动。
