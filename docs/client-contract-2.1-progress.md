@@ -22,7 +22,8 @@
 | 10a 账号资料与邀请预检 | 增量通过 | Luna：account-profile6 + account-store5 + auth-v2 5 + auth-race1 + v2-api3，共20例与typecheck。真实schema1文件、已知旧会话和真实密码在schema2仍可用；资料/预检、过期、撤销、单次消费、限流已验证。无头像上传能力，预留存储列与资产表 |
 | 10b 客户端约束与规则目录 | 增量通过 | Luna：client-catalog4 + rulesets18 + v2-api3，共25例与typecheck。匿名元数据、实际voice开关、9角色/唯一正式板、完整54条2.0规则、创建5/64人与非法配置边界；不声明64人完整玩法通过。avatars仍为false |
 | 11a 头像与契约验证依赖 | 增量通过 | 独立依赖镜像固定Sharp0.35.4/Ajv8.20.0，原包版本未升级。Luna：runtime-dependencies2 + smoke1 + client-catalog4，共7例与typecheck；实际生成/读取WebP、Ajv2020接受/拒绝样例。尚不代表头像业务已完成 |
-| 11b–13 | 待实施 | 头像处理、契约验收、候选构建/容量/切换尚未完成 |
+| 11b 头像处理与存储 | 增量通过 | Luna：avatars5 + account-store5 + runtime-dependencies2，共12例；补强真实动画WebP元数据确认、7天精确边界、过期仍引用保留、文件先存在再改DB、实际并发2后单文件5/5。三格式重编码、EXIF输入去元数据、伪装/过量/非正方拒绝、失败保留及孤儿回收均覆盖 |
+| 11c–13 | 待实施 | 头像HTTP接入提交、契约验收、候选构建/容量/切换尚未完成 |
 
 Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker/run` 与仅含 `engine.sock` 的 `docker-secrets-engine` 目录；未重置或删除镜像/磁盘/账号。原3000与3001候选容器已恢复。这里只表示运行恢复，不是2.1玩法验收。
 
@@ -64,3 +65,5 @@ Docker启动时两处失效socket阻止引擎启动。已保留并隔离 `Docker
 10b基线5789766，Docker只读源码及docs挂载运行client-catalog、rulesets、v2-api与typecheck。新测试hash 670cd6788bfb70f2a6d0bcbe0bb2cfb72a8112f5317593edab21e2e8d3f14589；全文规则同时入库作为catalog启动输入，原1.1历史文件保留。显式roles请求始终标实验，正式预设请求不发送roles。
 
 11a基线9695be2；实际Node v24.15.0、npm11.12.1。依赖镜像theater-death-contract-deps:sharp0354-ajv820，manifest sha256:ff3d66fe93bf9145f565b8b5bb983b49a4d0ab253fdecd5e88783554b44f3768；原始lock SHA256 201344f3a08498f027dfe149b1cbd3bb4d669a4564910e1b6b58e0c6fd19a02b，容器语义锁hash 98a5e16c65c3bd7dc48c4581de975afd4d602637d643156d802acef8c4770b99。上述3文件通过Docker只读挂载测试，新测试hash 559b8c1025988fab37c97fbb4283cabeadef901628049b390f29b220d8bc1627。未触发候选全量构建或load服务。
+
+11b/11c共用冻结测试基线80eb7f8，拆分存储与HTTP两个提交。存储组运行avatars、account-store、runtime-dependencies，补强后仅avatars复跑；新测试最终SHA256 a8301f07b31815783d552a0c98818b5bdbcf910c0e583ce0972a91f4771040d2。宿主/容器avatars.ts同为6a658068f10850f5b0d8ba4c9efc132ed9dd3aa9e6aafe9c7f8fbec91a05e8c1，account-store.ts同为94533fc603e18214bef846164c44395024d8e7066d6045b2cba38dff6c66e07b。模拟无效存储目录会产生通用清理失败warning，旧引用及文件保持；未包含真实用户图像。

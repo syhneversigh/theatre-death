@@ -53,6 +53,16 @@ export class AccountStore {
     if (!row) throw new ApiError(404, 'account_not_found');
     return { userId, username: String(row.username), avatarUrl: row.avatar_id === null ? null : `/api/v2/avatars/${row.avatar_id}`, profileVersion: Number(row.profile_version) };
   }
+  replaceAvatar(userId: string, assetId: string): Profile {
+    return this.transaction(() => {
+      const old = this.db.prepare('SELECT avatar_id FROM accounts WHERE id=?').get(userId);
+      if (!old) throw new ApiError(404, 'account_not_found');
+      this.db.prepare('INSERT INTO avatar_assets(id,created_at,unreferenced_at) VALUES(?,?,NULL)').run(assetId, this.now());
+      this.db.prepare('UPDATE accounts SET avatar_id=?,profile_version=profile_version+1 WHERE id=?').run(assetId, userId);
+      if (old.avatar_id !== null) this.db.prepare('UPDATE avatar_assets SET unreferenced_at=? WHERE id=?').run(this.now(), old.avatar_id);
+      return this.profile(userId);
+    });
+  }
   invite(purpose: 'register' | 'reset' = 'register', username?: string, ttl = purpose === 'register' ? WEEK : 1800_000) {
     const user = purpose === 'reset' ? this.byName(username ?? '') : null;
     if (purpose === 'reset' && !user) throw new ApiError(404, 'account_not_found');
