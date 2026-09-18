@@ -183,6 +183,27 @@ test('规则入口：关键词、空结果、当前角色与当前阶段跳转',
   void mounted;
 });
 
+test('房间管理视图保持聊天非零滚动位置与草稿', async ({ page }) => {
+  const fixture = loadGameFixture();
+  fixture.view.capabilities.canPostPublic = true;
+  fixture.view.chat.public = Array.from({ length: 120 }, (_, index) => ({ messageId: 'manage-chat-' + index, clientMessageId: 'manage-client-' + index, cursor: index + 1, senderId: fixture.view.viewer.subjectPlayerId!, text: '管理视图消息 ' + index, at: index }));
+  const mounted = await mount(page, fixture);
+  const history = page.getByLabel('公屏历史');
+  const input = page.getByLabel('公屏消息');
+  await input.fill('管理视图草稿');
+  await history.evaluate(element => { element.scrollTop = 200; element.dispatchEvent(new Event('scroll', { bubbles: true })); });
+  const before = await history.evaluate(element => element.scrollTop);
+  expect(before).toBeGreaterThan(0);
+  await page.getByRole('button', { name: '房间管理', exact: true }).click();
+  await expect(page.getByRole('button', { name: '返回舞台', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '返回舞台', exact: true }).click();
+  await expect(input).toHaveValue('管理视图草稿');
+  const after = await history.evaluate(element => element.scrollTop);
+  expect(after).toBeGreaterThan(0);
+  expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
+  void mounted;
+});
+
 async function expectNoOverflow(page: Page): Promise<void> {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }

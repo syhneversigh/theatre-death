@@ -4,7 +4,7 @@
 
 ## 当前断点
 
-F04/F05检查点c5d667b已合入frontend/v2。当前分支frontend/f06-information：公屏/阵营聊天、原消息重试与快照对账、规则搜索及当前角色/阶段章节入口已接入，类型检查通过，聊天增量测试正在补充；尚未完成F06浏览器验收。独立前端http://localhost:5173，仅隔离数据；完整UI验收未完成。完整复盘与第二屏授权操作待F07，个人显示偏好及死亡动效待F08。
+F06组件检查点4c88eec已合入frontend/v2。当前分支frontend/f07-spectator-review：私人第二屏邀请/兑换/撤销与只读行动展示、独立完整复盘及结束返回大厅已接入，类型检查通过，Luna正在编写真实聊天/第二屏链路测试。F06已完成8例tracker及双浏览器各4例组件验证，真实聊天仍待验证。独立前端http://localhost:5173，仅隔离数据；全项目验收未完成。个人显示偏好及死亡动效已有未接入准备，待F08。
 
 ## 里程碑
 
@@ -14,11 +14,11 @@ F04/F05检查点c5d667b已合入frontend/v2。当前分支frontend/f06-informati
 | F01 传输与状态 | 基础通过 | Luna 两文件14例及后端typecheck通过；HTTP/快照纯逻辑已验证，真实Socket/control接入待房间步骤 |
 | F02 认证账户 | 核心通过 | 头像单测5例；新版类型检查/构建；Chromium3例+WebKit3例真实账户链通过；个人显示偏好在F08实现，全部异常组合在F09补验 |
 | F03 首页大厅 | 核心通过 | 配置/权限/标题9例；房间Chromium3+WebKit3；账户回归6；空房5分钟/自动继任等补充分支留F09 |
-| F04 对局结构 | 实施/验证中 | 动态环形/网格、公开HUD、身份/信息弹层、手机固定行动条；未以fixture冒充真实玩法 |
-| F05 全部行动 | 实施/验证中 | 首版模型与tracker13例通过；新增快照对账竞态补验及UI契约场景进行中 |
-| F06 信息规则 | 实施中 | 聊天/规则搜索接入，增量测试中，未作浏览器完成声明 |
-| F07 观战复盘 | 未开始 | |
-| F08 响应式视觉 | 未开始 | |
+| F04 对局结构 | 核心通过 | 5/13/26/64席位边界双浏览器通过；公开HUD、身份/信息弹层、手机固定行动条；最终视觉细节留F08 |
+| F05 全部行动 | 组件通过/真实覆盖待扩展 | 模型/tracker16例，18意图组件两浏览器各3例；真实守护/同目标双刀两浏览器通过，其余真实窗口留F09 |
+| F06 信息规则 | 组件通过/真实链待验 | tracker8例，05双浏览器各4例；真实聊天与F07共同验证 |
+| F07 观战复盘 | 实施/验证中 | 已接入第二屏与独立复盘；真实授权链及复盘专项待验 |
+| F08 响应式视觉 | 准备中 | 偏好与公开死讯组件/样式已准备但未import；仍需视觉与交互验收 |
 | F09 新 UI 验收 | 未开始 | 不以旧 UI 或后端测试替代 |
 | F10 完整本地交付 | 未开始 | 不切换原服务、不发布公网 |
 | V01 实时语音 | 条件项 | 当前后端关闭，真实媒体验收另列 |
@@ -83,3 +83,18 @@ F04/F05检查点c5d667b已合入frontend/v2。当前分支frontend/f06-informati
 - 补强后chat tracker仍8例（原场景增加断言）及根typecheck通过；已检查错误sender/channel快照不得确认。事件流新增独立EventHistory：各流cursor排序/去重、60条初始分段、未读/滚动保持。聊天改为固定已加载起点，避免新增消息挤掉正在阅读的最早一条。F06产品依赖已冻结，Luna正在新增05-information专项双浏览器测试，尚无通过结论。
 - 并行准备的features/spectator/{panel,actions}.tsx与features/review/{model,page}.tsx尚未被主界面import，不是F07已完成功能。第二屏生成/兑换/撤销、只读授权窗口/提交状态；复盘独立GET及scope/gameId迟到保护、身份/完整时间线/全部交流/结束返回均已有独立组件，全部通过typecheck:web:v2，仍待接入和F07真实验收。F06测试期间不接入这些模块，避免改变被测版本。
 - 05-information首轮测试误用夜间禁写fixture填草稿，第二轮票型fixture错误替换完整历史；主代理已指出并要求修正测试数据，未据此修改产品。后续要求仍包括消息去重、事件60条分段回查、规则弹层焦点保持及切标签草稿/位置，只有最终实际断言和固定报告才能证明覆盖；当前未记录F06浏览器通过。
+
+## F07 当前断点
+
+- F06终轮实际证据见acceptance：05 Chromium4/4、WebKit4/4，8个tracker测试通过。已本地提交4c88eec并ff集成。当前F07分支已import ReviewPage、SecondScreenPanel、ObservedActions，类型检查通过，尚无F07验收结论。
+- GameScene进入房间管理时保留舞台/聊天组件挂载，保留草稿与未决发送；隐藏期间不记已读，也不更新保存的滚动位置。此项已要求05相关回归增加非零scrollTop验证。
+- 第二屏token只在内存，弹层关闭不丢未决requestId；玩家邀请/撤销和公开观众兑换按scope隔离。复盘API独立读取并校验gameId/scope，失败仍显示结局概览；时间线依服务端数组顺序，补充仅复盘可见的攻击/牺牲/救援/死亡确认呈现，不泄漏到对局事件。
+- Luna当前任务：06-chat-screen-real真实6人实验局（door/researcher/civilian/death各1，spirit2）和第7公开观众，真实阵营/日间公屏收发、第二屏兑换/撤销，固定夜间自然推进，不改phase/win；两浏览器专项和05回归。需要先等待当前任务结果再改被测源码；失败立即报告。完整复盘慢响应/结束返回与正式13人两局尚待独立测试。
+- F08准备文件state/preferences.ts、account/display-settings.tsx、game/death-notice.tsx均未import：非敏感显示偏好、本地保存、系统减少动画、仅新增公开死亡事件短提示并在重连建立新基线。已typecheck通过，尚未接入样式或验收，不能称实际设置已可用。
+- 当前已核对06真实WebKit报告results-f07-chat-screen-real-webkit.json：2/2、115.0秒、projectName为webkit。覆盖六人实验局的阵营消息、私人第二屏兑换/撤销及自然转日公屏；此前一轮失败是cleanup未关闭第二屏dialog，测试helper已补关闭动作。Chromium固定报告和05管理视图相关回归尚待Luna确认，不提前宣称全通过。
+- 已允许Luna在06等待固定窗口时准备07-review.spec.ts及仅按room.phase选择生产组件的测试harness；真实06结束前不restart web。07将验证独立复盘GET/慢响应/失败/跨scope/结束意图，夹具仍不能当作完整13人真实两局。
+- F08准备进一步拆出DOM无关preferences-model.ts及presentation/death-events.ts，便于针对非敏感配置过滤和仅公开死讯选择编写增量单测；新styles/preferences.css尚未import，包含实际缩放、减少动画与非阻塞死亡提示样式，当前页面不受影响。
+- 06两浏览器固定报告现已齐全且主代理核对各2/2（Chromium105.8秒/WebKit115.0秒），真实聊天/第二屏范围见acceptance。05管理回归各1例原断言仅返回后非零，已改为abs(after-before)<=1，等待07稳定后精准重跑。07由独立Luna代理frontend_review_tests负责spec、helpers-v2/game.ts及harness；不能与其同时改这些文件/重启web。
+- F08纯模型tests/frontend-v2-display-model.test.ts五例与根typecheck通过，覆盖偏好字段过滤及仅公开死讯。keyboard-viewport.ts与preferences.css也已准备但未import；浏览器视觉、缩放、动效、软键盘等仍待接入验收。
+- F09预期红测tests/frontend-v2-http-deadline.test.ts已准备：4例中2通过2失败，确认现有http.ts对fetch和JSON体均无20秒截止；未改产品以保持F07冻结。F09必须实现整体截止并保留UnknownResult/外部取消语义，另将commands/useIntent的5xx分类统一为未知可查/原ID恢复。最终门禁前必须使这两例转绿，不可把当前全套单测视作已通过。
+- F10准备server/v2/frontend-app.ts尚未接入index.ts；仅包装构建index及/assets，同源API原路径透传，不提供源码/开发测试入口。根typecheck通过，Luna frontend_foundation_tests正在独立静态HTTP测试；尚无最终镜像构建或服务切换。

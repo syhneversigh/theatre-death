@@ -15,8 +15,10 @@ import { RulesBook } from '../rules/book.tsx';
 import { Stage } from './stage.tsx';
 import { Identity, authorizedPrivate } from './identity.tsx';
 import { GameSidebar } from './sidebar.tsx';
+import { SecondScreenPanel } from '../spectator/panel.tsx';
+import { ObservedActions } from '../spectator/actions.tsx';
 
-type Overlay = { kind: 'identity' | 'rules' | 'navigation' } | { kind: 'player'; playerId: string } | { kind: 'event'; event: EventDTO } | null;
+type Overlay = { kind: 'identity' | 'rules' | 'navigation' | 'second-screen' } | { kind: 'player'; playerId: string } | { kind: 'event'; event: EventDTO } | null;
 export function GameScene({ view, catalog, online, remaining, refresh, onExit, onExpired }: {
   view: RoomSnapshot; catalog: CatalogDTO; online: boolean; remaining: (deadline: number) => number | null;
   refresh: () => Promise<void>; onExit: (message: string) => void; onExpired: () => void;
@@ -55,9 +57,9 @@ export function GameScene({ view, catalog, online, remaining, refresh, onExit, o
   const context = <div className="modal-game-context"><span>{publicPhaseLabel(view)}{task ? ` · ${actionLabels[task.action]} · ${formatCountdown(remaining(task.closesAt))}` : ''}</span><button className="text-button" onClick={() => { setOverlay(null); setManage(false); }}>返回舞台与行动</button></div>;
   const details = overlay?.kind === 'player' ? view.public?.seats.find(seat => seat.playerId === overlay.playerId) : null;
   const eventText = overlay?.kind === 'event' ? describeEvent(overlay.event, view, catalog) : null;
-  if (manage) return <>{context}<button className="button" onClick={() => setManage(false)}>返回舞台</button><Lobby view={view} catalog={catalog} online={online} remaining={remaining} refresh={refresh} onExit={onExit} onExpired={onExpired}/></>;
-  return <div className="game-scene">
-    <header className="game-hud"><div><span className="eyebrow">第 {view.public?.dayNumber ?? 1} 轮 · {view.public?.phase === 'night' ? '夜晚' : '白天'} · 第 {view.public?.stage ?? 1} 阶段</span><h1>{publicPhaseLabel(view)}</h1></div><div className="hud-meta"><strong>{publicWindow ? formatCountdown(remaining(publicWindow.closesAt)) : '以当前任务为准'}</strong><span>公开存活 {view.public?.seats.filter(seat => seat.alive).length ?? 0} / {view.public?.seats.length ?? 0}</span></div><div className="hud-tools"><button className="button" onClick={() => setOverlay({ kind: 'navigation' })}>导航</button><button className="button" onClick={() => setManage(true)}>房间管理</button></div></header>
+  return <>{manage && <>{context}<button className="button" onClick={() => setManage(false)}>返回舞台</button><Lobby view={view} catalog={catalog} online={online} remaining={remaining} refresh={refresh} onExit={onExit} onExpired={onExpired}/></>}
+    <div className="game-scene" hidden={manage}>
+    <header className="game-hud"><div><span className="eyebrow">第 {view.public?.dayNumber ?? 1} 轮 · {view.public?.phase === 'night' ? '夜晚' : '白天'} · 第 {view.public?.stage ?? 1} 阶段</span><h1>{publicPhaseLabel(view)}</h1></div><div className="hud-meta"><strong>{publicWindow ? formatCountdown(remaining(publicWindow.closesAt)) : '以当前任务为准'}</strong><span>公开存活 {view.public?.seats.filter(seat => seat.alive).length ?? 0} / {view.public?.seats.length ?? 0}</span></div><div className="hud-tools"><button className="button" onClick={() => setOverlay({ kind: 'navigation' })}>导航</button><button className="button" onClick={() => setOverlay({ kind: 'second-screen' })}>第二屏</button><button className="button" onClick={() => setManage(true)}>房间管理</button></div></header>
     {view.viewer.readOnly && <Notice>正在观战 · {privateView ? `私人第二屏：${privateView.self.seat}号 ${privateView.self.username}` : '公开视角'} · 只读</Notice>}
     {!view.viewer.readOnly && subject && !subject.alive && <Notice>你已死亡，仍可查看获准的信息；当前可用能力以行动面板为准。</Notice>}
     {activePlayer && <p className="speaker-banner">{view.public?.day?.speechPreparing ? '即将发言' : '当前发言'}：{activePlayer.seat}号 {activePlayer.username}</p>}
@@ -66,12 +68,13 @@ export function GameScene({ view, catalog, online, remaining, refresh, onExit, o
     <div className="game-columns"><div className="game-play-area"><Stage view={view} catalog={catalog} task={task} selected={draft.targets} locked={locked} onSelect={choose} onInfo={(seat: SeatDTO) => setOverlay({ kind: 'player', playerId: seat.playerId })}/>
       <div className="perspective-bar"><span>房间 {view.room.code} · {view.room.config.mode === 'formal' ? '正式模式' : '实验模式'} · 舞台状态以公开公告为准</span>{privateView && <button className="text-button" onClick={() => setOverlay({ kind: 'identity' })}>{view.viewer.readOnly ? '当前观察身份' : '我的身份'}</button>}</div>
       <div ref={actionRef} className="action-anchor"><ActionPanel view={view} task={task} draft={draft} setDraft={setDraft} selectTask={setActiveKey} online={online} remaining={remaining} records={commands.records} submit={intent => { void commands.submit(intent); }} retry={id => void commands.retry(id)} query={id => void commands.query(id)}/></div>
-    </div><GameSidebar view={view} catalog={catalog} online={online} readingPaused={overlay !== null} refresh={refresh} onIdentity={() => setOverlay({ kind: 'identity' })} onRules={() => setOverlay({ kind: 'rules' })} onEvent={event => setOverlay({ kind: 'event', event })}/></div>
+      <ObservedActions view={view} remaining={remaining}/>
+    </div><GameSidebar view={view} catalog={catalog} online={online} readingPaused={manage || overlay !== null} refresh={refresh} onIdentity={() => setOverlay({ kind: 'identity' })} onRules={() => setOverlay({ kind: 'rules' })} onEvent={event => setOverlay({ kind: 'event', event })}/></div>
     <div className="mobile-action-bar"><button className="mobile-action-summary" onClick={() => actionRef.current?.scrollIntoView({ block: 'end', behavior: 'auto' })}><strong>{task ? `${actionLabels[task.action]} · ${formatCountdown(remaining(task.closesAt))}` : view.viewer.readOnly ? '只读观战' : '本阶段无需操作'}</strong><span>{task?.targets ? draft.targets.length ? targetSummary(view, draft.targets) : '尚未选择目标' : '查看行动与提交状态 ↑'}</span></button>{task && <button className="button button--primary" disabled={locked || !!actionIssue(view, task, draft)} onClick={sendActive}>{task.targets?.canSkip && !draft.targets.length ? skipLabels[task.action] ?? '确认提交' : '确认提交'}</button>}</div>
     {overlay?.kind === 'rules' && <RulesBook catalog={catalog} context={context} roleId={privateView?.self.roleId} phase={view.public?.phase} onClose={() => setOverlay(null)}/>}
     {overlay?.kind === 'identity' && <Modal title={view.viewer.readOnly ? '当前观察身份' : '我的身份'} context={context} onClose={() => setOverlay(null)}><Identity view={view} catalog={catalog}/></Modal>}
     {overlay?.kind === 'player' && details && <Modal title={`${details.seat}号玩家`} context={context} onClose={() => setOverlay(null)}><div className="account-profile"><Avatar url={details.avatarUrl} name={details.username} size="large"/><div><h3>{details.username}</h3><p>{details.alive ? '公开状态：存活' : '公开状态：已死亡'} · {presenceLabels[details.presence]}</p><p>{details.revealedRoleId ? `公开身份：${catalog.roles.find(role => role.roleId === details.revealedRoleId)?.name ?? '已翻牌'}` : '身份尚未公开'}</p>{view.public?.sheriff.holderId === details.playerId && <p>沉睡的天理</p>}</div></div></Modal>}
     {overlay?.kind === 'event' && eventText && <Modal title={eventText.title} context={context} onClose={() => setOverlay(null)}><p className="muted">第 {overlay.event.dayNumber} 轮 · 阶段 {overlay.event.stage}</p>{eventText.details.map((line, index) => <p key={index}>{line}</p>)}</Modal>}
     {overlay?.kind === 'navigation' && <Modal title="剧院导航" context={context} onClose={() => setOverlay(null)}><p className="muted">查看账户或首页不会主动离开房间，对局仍继续计时。</p><div className="button-row"><button className="button" onClick={() => navigate('/')}>剧院首页</button><button className="button" onClick={() => navigate('/account')}>我的账户</button><button className="button" onClick={() => setOverlay({ kind: 'rules' })}>完整规则</button></div></Modal>}
-  </div>;
+  </div><SecondScreenPanel view={view} online={online} open={overlay?.kind === 'second-screen'} onClose={() => setOverlay(null)} refresh={refresh} remaining={remaining} context={context}/></>;
 }

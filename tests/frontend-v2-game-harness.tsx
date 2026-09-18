@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import type { CatalogDTO } from '../contracts/catalog.ts';
 import type { RoomSnapshot } from '../contracts/v2.ts';
 import { GameScene } from '../web-v2/src/features/game/scene.tsx';
+import { Lobby } from '../web-v2/src/features/room/lobby.tsx';
+import { ReviewPage } from '../web-v2/src/features/review/page.tsx';
 import '../web-v2/src/styles/main.css';
 
 export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; online: boolean }
 const updateEvent = 'v2-game-fixture-update';
 
 function sceneKey(view: RoomSnapshot): string {
-  return [view.viewer.userId, view.roomId, view.gameId, view.viewer.memberId, view.viewer.kind, view.viewer.subjectPlayerId].join('/');
+  return [view.room.phase, view.viewer.userId, view.roomId, view.gameId, view.viewer.memberId, view.viewer.kind, view.viewer.subjectPlayerId].join('/');
 }
 
 export function GameHarness() {
@@ -36,10 +38,16 @@ export function GameHarness() {
     const estimated = sample.current.server + Math.max(0, performance.now() - sample.current.local);
     return Math.max(0, deadline - estimated);
   };
-  return <main className="home-layout home-layout--playing"><section className="home-main"><GameScene key={sceneKey(view)} view={view} catalog={catalog} online={online} remaining={remaining} refresh={async () => {
-    const response = await fetch('/__game-fixture');
-    applyFixture(await response.json() as GameHarnessFixture);
-  }} onExit={message => { setFixture(null); setTerminal(message); }} onExpired={() => { setFixture(null); setTerminal('登录已失效'); }}/></section></main>;
+  const refresh = async () => {
+    applyFixture(await (await fetch('/__game-fixture')).json() as GameHarnessFixture);
+  };
+  const props = { view, catalog, online, remaining, refresh, onExit: (message: string) => { setFixture(null); setTerminal(message); }, onExpired: () => { setFixture(null); setTerminal('登录已失效'); } };
+  const content = view.room.phase === 'playing' && view.public
+    ? <GameScene key={sceneKey(view)} {...props}/>
+    : view.room.phase === 'review'
+      ? <ReviewPage key={sceneKey(view)} {...props}/>
+      : <Lobby key={sceneKey(view)} {...props}/>;
+  return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><section className="home-main">{content}</section></main>;
 }
 
 function applyFixture(next: GameHarnessFixture): void {

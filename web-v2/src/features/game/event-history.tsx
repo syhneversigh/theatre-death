@@ -25,6 +25,7 @@ export function EventHistory({ events, view, catalog, active, label, onDetail, o
   }, [active, last]);
   return <section aria-label={label}>
     <div className="event-history" ref={scroll} tabIndex={0} aria-label={`${label}历史`} onScroll={event => {
+      if (!active) return;
       const element = event.currentTarget; position.current = element.scrollTop;
       bottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24;
       if (active && bottom.current) { seen.current = last; setUnread(0); }

@@ -54,6 +54,7 @@ export function ChatChannelView({ view, channel, online, active, refresh, onUnre
   };
   return <section className="chat-channel" aria-label={`${label}交流`}>
     <div className="chat-history" ref={scroll} tabIndex={0} aria-label={`${label}历史`} onScroll={event => {
+      if (!active) return;
       const element = event.currentTarget; scrollPosition.current = element.scrollTop;
       atBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 24;
       if (active && atBottom.current) { seenCursor.current = lastCursor; setUnread(0); }

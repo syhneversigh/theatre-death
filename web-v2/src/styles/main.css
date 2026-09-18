@@ -6,6 +6,9 @@
   --accent: #455974; --gold: #a69a7e; --danger: #944b56; --radius: 12px;
 }
 * { box-sizing: border-box; }
+.game-scene[hidden] { display: none; }
+.review-page > .button-row, .review-page > .event-list, .review-page > .members-list { margin: 22px 0; }
+.review-page .event-row p { margin-bottom: 0; }
 body { margin: 0; min-width: 320px; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }

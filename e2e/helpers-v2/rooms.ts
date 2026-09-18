@@ -44,6 +44,11 @@ export async function confirmModal(page: Page, title: string): Promise<void> {
 }
 
 export async function leaveRoom(page: Page): Promise<void> {
+  const dialog = page.getByRole('dialog');
+  if (await dialog.isVisible().catch(() => false)) {
+    const close = dialog.getByRole('button', { name: '关闭' });
+    if (await close.isVisible().catch(() => false)) await close.click();
+  }
   let leave = page.getByRole('button', { name: '离开房间', exact: true });
   if (!(await leave.isVisible().catch(() => false))) {
     const manage = page.getByRole('button', { name: '房间管理', exact: true });
