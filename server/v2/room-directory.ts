@@ -9,6 +9,7 @@ export interface DirectoryDeps extends StableRoomDeps {
   changed: (room: StableRoom, event?: { disconnectedMemberId: string }) => void;
   control: (room: StableRoom, sessionId: string | null, reason: ControlReason) => void;
   removed?: (room: StableRoom) => void;
+  beforeMutation?: (room: StableRoom) => void;
 }
 
 /** Membership transactions always acquire the directory queue before a room queue.
@@ -29,6 +30,8 @@ export class RoomDirectory {
   mutate<T>(room: StableRoom, task: () => T): Promise<T> {
     return this.transaction(() => room.enqueue(() => {
       if (room.dissolved || this.byId.get(room.roomId) !== room) throw new ApiError(404, 'room_not_found');
+      this.deps.beforeMutation?.(room);
+      if (room.dissolved) throw new ApiError(404, 'room_not_found');
       const value = task();
       this.deps.changed(room);
       return value;
