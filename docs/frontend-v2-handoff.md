@@ -60,8 +60,10 @@ docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.y
 
 ## 验收证据与后续边界
 
-镜像产品源码提交为a9ad5a6d9652b08a092f0f2d3d09cee608c0d414，镜像摘要为sha256:bd10f62c15215a22f43d09afa31a992a965095aa0107a4ae3142b7a53e46fc60。构建日志为test-results-frontend-v2/build-f10.log。后续提交只整理测试环境域名、截图和交付文档，不改变该镜像的产品代码。
+镜像产品源码提交为853d1b021d04eeb4b048d1a06e41eb02e11b32e7，镜像摘要为sha256:9dfd1720c7ea01924f7da1b024ebcfda14d31216fc7ca7755a00c7fc886d875b。构建日志为test-results-frontend-v2/build-admin-final.log；81个测试文件、515项单元/API测试、根与前端类型检查及生产构建均通过。
 
 最终产物的隔离验证编排为deploy/compose.frontend-smoke.yml：不开放宿主端口，使用另一个独立数据卷，浏览器通过http://theater-smoke:3000访问实际候选。13-release-smoke.spec.ts验证非localhost HTTP请求ID兼容、实际静态资源/源码404、注册登录/头像/Socket以及真实五人开局；报告results-f10-release-{chromium,webkit}.json分别1/1通过。使用theater-smoke别名，避免裸app域名被浏览器自动升级HTTPS。测试项目已停止，测试账号未写入本地交付卷。
+
+新增15-admin.spec.ts也对实际候选镜像完成Chromium/WebKit验证，每个项目连同13共4/4通过，报告为results-admin-release-{chromium,webkit}.json。覆盖独立管理员登录、邀请与真实注册、账户治理、头像、停用/启用、重置码、邀请编辑/撤销/再生成及未知响应重试。手机邀请码列表另有宽度、触控尺寸与无横向溢出断言。
 
 18类行动与正式13人首局复盘/第二局启动分别由09和11真实链验证；账户异常、草稿、跨账号、房间治理、重连、响应式与键盘验证见验收台账。手机软键盘采用浏览器等效视口验证，没有冒充物理手机实测。真实媒体语音、正式数据脱敏/迁移、公网部署及原服务入口切换仍由用户后续安排；当前没有文本版交付阻塞项。

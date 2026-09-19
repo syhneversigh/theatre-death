@@ -2,7 +2,15 @@
 
 状态：2026-09-19文字版完整前后端本地交付验收通过。依据工作区《前端开发计划.md》及前端需求AC-01～AC-23，API /api/v2、contract2.1、rules2.0。账号、数据库、头像均使用独立合成测试环境；不使用真实用户数据。真实媒体语音仍为条件项，公网部署、正式数据与脱敏不在此次执行范围。
 
-账户与邀请码管理为后续批准的本地扩展，当前增量验收已通过、最终镜像门禁进行中。管理API契约见openapi-admin-v2.1.json；管理账号与玩家账号完全分离。
+账户与邀请码管理为后续批准的本地扩展，现已完成最终镜像验收。管理API契约见openapi-admin-v2.1.json；管理账号与玩家账号完全分离。
+
+## 管理系统验收
+
+- 数据/API定向6文件34例通过；覆盖schema2→3、旧数据保留、停用/session、唯一改名、头像、邀请状态/TTL、管理员鉴权/Cookie/Origin/限流、玩家越权、房间联动、OpenAPI及`/admin`静态入口。额外搜索边界5/5通过，`_`与`%`均按字面匹配。
+- 15-admin开发环境最终Chromium3/3（5.0秒）、WebKit3/3（10.5秒），报告results-admin-{chromium,webkit}-final.json。验证无配置说明、独立登录、一次性邀请与真实注册、账户治理、普通玩家隔离、真实头像清除、邀请编辑/撤销/重生成，以及服务端实际执行后丢响应的同requestId/body重试。
+- 视觉复验初次发现390px邀请码五列逐字换行及32px操作按钮；改为移动端纵向信息卡和至少56×44px操作。修复后Chromium/WebKit响应式场景各1/1，断言单元宽度、按钮宽度及无横向溢出，截图admin-{accounts,invitations}-{project}.png不含秘密。
+- 完整镜像源码853d1b0构建门禁81文件515项通过，生产JS396503字节、CSS30810字节。实际候选镜像13+15在Chromium/WebKit各4/4，报告results-admin-release-{chromium,webkit}.json；运行层不含测试、网页源码或`.env.frontend-local`。
+- localhost:5174已用新镜像重建，保留原命名卷并从schema2迁移到3；升级前后账户/会话/邀请/头像均为0。首页和`/admin`均200；未配置ADMIN_PASSWORD时管理API按设计返回404 admin_not_configured。管理员密码由用户在忽略提交的本地环境文件设置后重启启用。
 
 本页首部逐项矩阵及最终补充为当前结论。下文保留实施过程，历史记录中的“待验/进行中”表示当时状态，不覆盖最终已核验结果。交付操作见frontend-v2-handoff.md，镜像及文件标识见frontend-v2-release.json。
 
