@@ -13,7 +13,14 @@
 
 ## 构建与运行
 
-在仓库根目录、Docker可用时执行。依赖镜像为 theater-death-contract-deps:sharp0354-ajv820；锁文件不匹配会拒绝构建，需要先按deploy/Dockerfile.dependencies重建依赖镜像。
+先切换到仓库目录并启动 Docker Desktop。`docker info` 成功才表示引擎就绪，`docker --version` 只说明客户端已安装。以下为当前机器路径，其他机器换成实际仓库路径：
+
+```powershell
+Set-Location -LiteralPath 'D:\myApps\暴风雪剧院\theater-death'
+docker info
+```
+
+依赖镜像为 theater-death-contract-deps:sharp0354-ajv820；锁文件不匹配会拒绝构建，需要先按deploy/Dockerfile.dependencies重建依赖镜像。
 
 新机器没有依赖镜像时先执行下列命令；已有且锁文件匹配时可直接复用。其Dockerfile固定基础镜像摘要，再按package-lock.json安装依赖，不在宿主安装Node。
 
@@ -22,15 +29,43 @@ docker build -f deploy/Dockerfile.dependencies -t theater-death-contract-deps:sh
 ```
 
 ```powershell
-Copy-Item .env.frontend-local.example .env.frontend-local
+if (-not (Test-Path -LiteralPath .env.frontend-local)) {
+  Copy-Item .env.frontend-local.example .env.frontend-local
+}
 # 编辑 .env.frontend-local，将 ADMIN_PASSWORD 换成至少16位且仅本环境使用的密码。
 $env:FRONTEND_VCS_REF = git rev-parse HEAD
 docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml build app
-docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml up -d app
-docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml ps
+.\deploy\frontend-local.ps1 start
 ```
 
 构建含根类型检查、新前端类型检查、完整单元/API门禁和生产前端构建；只在最终候选检查点执行，不把它用作每个小改动的增量验证。运行时不挂载源码或测试时钟。
+
+## 日常启动和 Docker 故障恢复
+
+日常无需重新构建。Windows PowerShell 5.1 和 PowerShell 7 均可使用：
+
+```powershell
+Set-Location -LiteralPath 'D:\myApps\暴风雪剧院\theater-death'
+.\deploy\frontend-local.ps1 start
+.\deploy\frontend-local.ps1 status
+```
+
+脚本基于自身位置查找仓库和 `.env.frontend-local`，固定使用本机 `desktop-linux` context，不会误操作其他 Docker context。找不到 CLI 时可传 `-DockerPath '实际的docker.exe绝对路径'`。它等待引擎就绪（约90秒）、用现有镜像启动并等待容器健康，然后检查 `/healthz`、玩家页和 `/admin`；失败会报错，不会自动修复 Docker、下载或重建镜像，也不会输出密码。管理员是否配置仍由本地 env 决定，`/admin` 返回200不代表已经登录。
+
+5174服务使用 `restart: unless-stopped`：Docker正常启动后自动恢复之前运行的该服务；主动执行 stop 后保持停止，需再次 start。5173开发服务和测试服务不纳入常驻启动。此策略不恢复内存中的对局，也不能修复 Docker 引擎本身的启动故障。
+
+如果 Docker Desktop 明确报告 `sailor-ingest.sock` 或 `docker-secrets-engine/engine.sock` 的 `The file cannot be accessed by the system` 启动错误，使用独立恢复入口：
+
+```powershell
+.\deploy\recover-docker-sockets.ps1 -WhatIf
+.\deploy\recover-docker-sockets.ps1
+```
+
+恢复入口只接受本用户最近15分钟内的匹配后台启动失败日志（含轮转日志），且引擎必须不可用；日志已有后续成功监听记录时忽略旧故障。健康引擎直接跳过，其他错误拒绝修复。它先核对两个目录只包含已知零长度 socket，并拒绝经过目录链接的路径，再停止失败的 Desktop；如果进程没有退出，会停止操作并提示退出错误对话框后重试，不自动强杀。确认 Desktop 已退出后，将两个目录改名为带时间戳的 `.recovery-*` 留存，建立空目录，重新启动 Desktop 并验证5174服务。不会清空旧目录、重置出厂设置、删除卷或修改 Docker AI 设置。`-WhatIf` 只做检查并显示计划，不停止进程或改名。恢复 Desktop 会影响其承载的所有本地容器；只有5174属于本脚本的应用启动范围。
+
+这是已验证恢复办法的保守封装，并非根因修复。2026-09-19在Docker Desktop 4.91.0上，正常CLI重启也复现了Ingest socket错误；隔离运行目录后恢复。关闭AI后的重启稳定性尚未验证。若日志过旧，先通过Docker Desktop界面尝试一次启动，得到新的失败记录，再判断是否适用。不要把其他WSL、网络、磁盘或权限错误套用到此流程。
+
+维护脚本专项测试：`powershell.exe -NoProfile -File .\tests\deploy-frontend-local.tests.ps1`。测试只在临时夹具中验证命令超时、参数转义、日志匹配与目录保护，不操作真实Docker。Windows宿主管理脚本必须在Windows验证，业务程序仍全部在容器内运行。实机已验证5174启动/状态、重复启动不重建容器、API和两个页面健康、健康引擎跳过恢复；自动恢复的目录改名分支没有通过再次制造真实故障来验收，也没有重新跑业务全量测试或构建镜像。
 
 访问 http://localhost:5174。PUBLIC_BASE_URL是精确来源，localhost与127.0.0.1不可随意互换；当前端口只绑定本机回环地址。
 
@@ -53,10 +88,10 @@ docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.y
 ## 停止与数据
 
 ```powershell
-docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml down
+.\deploy\frontend-local.ps1 stop
 ```
 
-该命令保留命名数据卷；不要加-v，除非明确要删除此环境全部账号、头像和审计数据。当前版本不承诺服务器重启恢复正在进行的对局。生产迁移、脱敏和公网入口切换由用户后续另行安排。
+该命令保留容器和命名数据卷，且明确暂停自动启动。手动使用compose down也会保留命名卷，但不要加-v，除非明确要删除此环境全部账号、头像和审计数据。当前版本不承诺服务器重启恢复正在进行的对局。生产迁移、脱敏和公网入口切换由用户后续另行安排。
 
 ## 验收证据与后续边界
 

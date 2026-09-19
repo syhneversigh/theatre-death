@@ -20,7 +20,9 @@ docker compose -f deploy/compose.contract.yml --profile app up -d app
 
 本次启动日志确认 `Docker/run/sailor-ingest.sock` 和 `docker-secrets-engine/engine.sock` 失效。停止失败的Desktop/backend进程，核对目录只含运行socket后，将这两个目录改名留存，再重建空目录并启动即可恢复。未使用factory reset，未删除虚拟磁盘或镜像。这个动作只适用于已确认的相同错误，不能把所有Docker启动失败都按此处理。
 
-日志位置：`C:/Users/xumat/AppData/Local/Docker/log/host/com.docker.backend.exe.log`。本机Docker路径：`C:/Users/xumat/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe`。如果代理沙箱账号的LOCALAPPDATA不同，应使用实际安装路径。启动时使用隐藏窗口，界面需要用户操作时另行说明。
+日志位置：`C:/Users/xumat/AppData/Local/Docker/log/host/com.docker.backend.exe.log*`（包含轮转文件）。本机Docker路径：`C:/Users/xumat/AppData/Local/Programs/DockerDesktop/resources/bin/docker.exe`。如果代理沙箱账号的LOCALAPPDATA不同，应使用实际安装路径。启动时使用隐藏窗口，界面需要用户操作时另行说明。
+
+2026-09-19补充：正常CLI重启也复现了Ingest socket错误，因此上述处理只能称为临时恢复，不能认为已根治。5174现在有专用 `deploy/frontend-local.ps1` 启动/健康检查入口和 `deploy/recover-docker-sockets.ps1` 保守恢复入口；限制、预览及操作说明见 [前端交付手册](frontend-v2-handoff.md#日常启动和-docker-故障恢复)。不将恢复操作放进正常启动脚本，也不对正常运行的引擎隔离socket目录。
 
 ## 切换与回滚约束
 

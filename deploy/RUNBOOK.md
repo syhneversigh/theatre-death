@@ -15,7 +15,7 @@
 
 ## 2 首次安装
 
-1. 安装并启动 Docker（Windows/macOS 用 Docker Desktop；Linux 用 Docker Engine + compose 插件），确认 `docker --version` 可用。
+1. 安装并启动 Docker（Windows/macOS 用 Docker Desktop；Linux 用 Docker Engine + compose 插件），确认 `docker info` 成功；`docker --version` 只检查客户端，不表示引擎已就绪。
 2. 获取项目文件（整个目录，含 `deploy/`）。
 3. 运行安装脚本（首次与日常分开）：
    - Windows：`deploy\install.ps1`
