@@ -9,6 +9,7 @@ import { configuration } from './config.ts';
 import { AccountStore } from './account-store.ts';
 import { createV2App } from './app.ts';
 import { AvatarStore } from './avatars.ts';
+import { createFrontendApp } from './frontend-app.ts';
 
 const config = configuration();
 mkdirSync(config.dataDir, { recursive: true });
@@ -19,7 +20,8 @@ const voice = config.voiceEnabled ? createLiveKitVoiceService({ adminUrl: proces
 const verifier = voice ? new WebhookReceiver(process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!) : null;
 const avatars = new AvatarStore(accounts, join(config.dataDir, 'avatars'));
 const backend = createV2App({ accounts, clock, logStore, avatars, origin: config.origin, cookieName: config.cookieName, secureCookies: config.secureCookies, voice, ...(verifier ? { verifyWebhook: (body: string, auth?: string) => verifier.receive(body, auth) } : {}) });
-const server = createServer(backend.app);
+const app = process.env.WEB_ROOT ? createFrontendApp(backend.app, process.env.WEB_ROOT) : backend.app;
+const server = createServer(app);
 backend.hub.attachV2(server);
 backend.maintenance.start();
 server.listen(config.port, '0.0.0.0', () => console.log(`theater-death API v2 listening on ${config.port}`));

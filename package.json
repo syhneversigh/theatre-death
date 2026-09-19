@@ -13,7 +13,7 @@
     "dev:web:v2": "vite --config vite.v2.config.ts --host 0.0.0.0",
     "typecheck:web:v2": "tsc --noEmit -p web-v2",
     "typecheck:web:v2-tests": "tsc --noEmit -p web-v2/tsconfig.browser-tests.json",
-    "build:web:v2": "vite build --config vite.v2.config.ts",
+    "build:web:v2": "node scripts/build-frontend-v2.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node server/index.ts"
