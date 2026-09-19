@@ -57,10 +57,12 @@ describe('v2 frontend HTTP transport', () => {
 
   it('preserves the original error for an explicitly aborted request', async () => {
     const controller = new AbortController();
-    controller.abort();
-    const abortError = new Error('caller abort');
+    const reason = new Error('caller abort');
+    controller.abort(reason);
+    let called = false;
 
-    await expect(request('/rooms/R/command', { signal: controller.signal }, async () => { throw abortError; })).rejects.toBe(abortError);
+    await expect(request('/rooms/R/command', { signal: controller.signal }, async () => { called = true; throw new Error('fetch must not run'); })).rejects.toBe(reason);
+    expect(called).toBe(false);
   });
 
   it('does not expose unknown payload text in user-facing error messages', () => {

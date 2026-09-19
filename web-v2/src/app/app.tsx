@@ -62,6 +62,11 @@ export function App() {
     const profile = acceptProfile(current.profile, incoming, current.profile.userId);
     return profile ? { ...current, profile: { ...profile, expiresAt: current.profile.expiresAt } } : current;
   });
-  const logout = () => { initialRoomLink.current = null; setBoot(current => current ? { ...current, profile: null } : null); };
+  const ownerId = boot.profile.userId;
+  const logout = () => setBoot(current => {
+    if (current?.profile?.userId !== ownerId) return current;
+    initialRoomLink.current = null;
+    return { ...current, profile: null };
+  });
   return <AuthenticatedShell key={boot.profile.userId} profile={boot.profile} bootstrap={boot.bootstrap} catalog={boot.catalog} onProfile={replaceProfile} onLogout={logout}/>;
 }

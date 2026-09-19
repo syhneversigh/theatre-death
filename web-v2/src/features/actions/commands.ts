@@ -55,7 +55,7 @@ export class CommandTracker {
       else record.status = 'unknown';
     } catch (error) {
       if (!this.authorized() || this.records.get(id)?.status === 'accepted') return;
-      record.status = error instanceof ApiFailure && ![429, 503].includes(error.status) ? 'rejected' : 'unknown';
+      record.status = error instanceof ApiFailure && error.status < 500 && ![408, 429].includes(error.status) ? 'rejected' : 'unknown';
       record.code = error instanceof ApiFailure ? error.code : null;
       this.failed(error);
     }

@@ -9,12 +9,13 @@ import { RulesBook } from '../rules/book.tsx';
 import { canManageMember, memberLabel } from './policy.ts';
 
 type Confirmation = { action: 'kick' | 'transfer-host'; memberId: string; name: string } | { action: 'leave' | 'dissolve' };
-export function Lobby({ view, catalog, online, remaining, refresh, onExit, onExpired }: {
+export function Lobby({ view, catalog, online, active = true, remaining, refresh, onExit, onExpired }: {
   view: RoomSnapshot; catalog: CatalogDTO; online: boolean; remaining: (deadline: number) => number | null;
-  refresh: () => Promise<void>; onExit: (message: string) => void; onExpired: () => void;
+  refresh: () => Promise<void>; onExit: (message: string) => void; onExpired: () => void; active?: boolean;
 }) {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [rules, setRules] = useState(false);
+  useEffect(() => { if (!active) { setRules(false); setConfirmation(null); } }, [active]);
   const [, tick] = useState(0);
   useEffect(() => { if (view.room.emptyDeadline === null) return; const timer = setInterval(() => tick(value => value + 1), 1000); return () => clearInterval(timer); }, [view.room.emptyDeadline]);
   const caps = view.capabilities.room;
@@ -60,8 +61,8 @@ export function Lobby({ view, catalog, online, remaining, refresh, onExit, onExp
       {caps.ready.allowed && <button className="button" disabled={locked} onClick={() => run('ready', { ready: !mine?.ready })}>{mine?.ready ? '取消准备' : '准备'}</button>}
       {view.viewer.isHost && isLobby && <div className="start-control"><button className="button button--primary" disabled={locked || !caps.start.allowed} onClick={() => run('start')}>{operation.busy ? '正在确认…' : '开始游戏'}</button>{!caps.start.allowed && <span>{roomPermissionReasons[caps.start.reason ?? ''] ?? '暂时不能开局。'}</span>}</div>}
     </div></footer>
-    {rules && <RulesBook catalog={catalog} onClose={() => setRules(false)}/>}
-    {confirmation && confirmationValid && <Modal title={confirmation.action === 'kick' ? '移出成员？' : confirmation.action === 'transfer-host' ? '转移房主？' : confirmation.action === 'dissolve' ? '解散房间？' : '离开房间？'} onClose={() => setConfirmation(null)} dismissible={!operation.busy}>
+    {active && rules && <RulesBook catalog={catalog} onClose={() => setRules(false)}/>}
+    {active && confirmation && confirmationValid && <Modal title={confirmation.action === 'kick' ? '移出成员？' : confirmation.action === 'transfer-host' ? '转移房主？' : confirmation.action === 'dissolve' ? '解散房间？' : '离开房间？'} onClose={() => setConfirmation(null)} dismissible={!operation.busy}>
       <p>{confirmation.action === 'kick' ? `将 ${confirmation.name} 移出当前房间。这不是封禁，对方仍可重新加入。` : confirmation.action === 'transfer-host' ? `将房主管理权交给 ${confirmation.name}，准备状态保持不变。` : confirmation.action === 'dissolve' ? '所有成员将退出，房间码立即失效。' : isLobby ? '你将离开当前房间，并释放正式名额（若有）。' : '对局仍会继续计时。本局玩家再次进入时恢复本人身份，不会由观众接替。'}</p>
       <div className="button-row"><button className="button" disabled={operation.busy} onClick={() => setConfirmation(null)}>取消</button><button className="button button--primary" disabled={locked || !confirmationValid} onClick={confirm}>{operation.busy ? '正在确认…' : '确认操作'}</button></div>
     </Modal>}

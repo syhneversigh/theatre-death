@@ -7,6 +7,7 @@ import { Notice } from '../../components/ui.tsx';
 import { ApiFailure, errorMessage } from '../../transport/http.ts';
 import { targetSummary } from '../../presentation/targets.ts';
 import { Proposal } from './proposal.tsx';
+import { newRequestId } from '../../transport/ids.ts';
 export { targetSummary } from '../../presentation/targets.ts';
 
 export function ActionPanel({ view, task, draft, setDraft, selectTask, online, remaining, records, submit, retry, query }: {
@@ -22,7 +23,7 @@ export function ActionPanel({ view, task, draft, setDraft, selectTask, online, r
   const latestMatches = latest && (!latest.intent.targets || JSON.stringify(latest.intent.targets) === JSON.stringify(draft.targets)) && (latest.intent.direction === undefined || latest.intent.direction === draft.direction) && (latest.intent.revision === undefined || latest.intent.revision === draft.revision);
   const expired = task ? remaining(task.closesAt) === 0 : false;
   const locked = !online || !!pending || expired;
-  const send = () => { if (task && !issue && !locked) submit(commandIntent(view, task, draft, crypto.randomUUID())); };
+  const send = () => { if (task && !issue && !locked) submit(commandIntent(view, task, draft, newRequestId())); };
   const unresolvedOld = records.filter(record => !['accepted', 'rejected', 'sending'].includes(record.status) && !view.tasks.some(item => taskKey(item) === taskKey(record.intent)));
   return <section className="action-dock" aria-label="当前行动"><div className="action-dock__head"><span className="eyebrow">YOUR NEXT MOVE</span>{task && <strong className="action-clock">{formatCountdown(remaining(task.closesAt))}</strong>}</div>
     {visibleTasks.length > 1 && <div className="task-switch" role="group" aria-label="可用任务">{visibleTasks.map(item => <button type="button" key={taskKey(item)} aria-pressed={!!task && taskKey(task) === taskKey(item)} onClick={() => selectTask(taskKey(item))}>{actionLabels[item.action]}</button>)}</div>}

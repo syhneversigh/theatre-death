@@ -88,13 +88,14 @@ describe('v2 command tracker', () => {
     expect(h.transport.send.mock.calls[0]?.[0]).toEqual(original);
     expect(h.transport.send.mock.calls[1]?.[0]).toEqual(original);
 
-    for (const status of [429, 503]) {
+    for (const status of [408, 429, 500, 502, 503, 504]) {
       const retryable = trackerHarness();
       retryable.transport.send.mockRejectedValueOnce(new ApiFailure(status, 'rate_limited'));
       await retryable.tracker.submit(intent(retryable.view));
       expect(retryable.tracker.list()[0]?.status).toBe('unknown');
       await retryable.tracker.retry('request-1');
       expect(retryable.transport.send).toHaveBeenCalledTimes(2);
+      expect(retryable.transport.send.mock.calls[1]?.[0]).toEqual(retryable.transport.send.mock.calls[0]?.[0]);
     }
   });
 

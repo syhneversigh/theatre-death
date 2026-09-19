@@ -62,7 +62,7 @@ export class ChatTracker {
       } else record.status = 'unknown';
     } catch (error) {
       if (!this.current() || record.status === 'accepted') return;
-      record.status = error instanceof ApiFailure && error.status < 500 && error.status !== 429 ? 'failed' : 'unknown';
+      record.status = error instanceof ApiFailure && error.status < 500 && ![408, 429].includes(error.status) ? 'failed' : 'unknown';
       record.code = error instanceof ApiFailure ? error.code : null;
     }
     this.emit();

@@ -12,22 +12,43 @@ export class UnknownResult extends Error {
 }
 
 export async function request<T>(path: string, options: RequestInit = {}, fetcher: typeof fetch = fetch): Promise<T> {
-  let response: Response;
+  const external = options.signal;
+  if (external?.aborted) throw external.reason;
+  const controller = new AbortController();
+  const forwardAbort = () => controller.abort(external?.reason);
+  let rejectAbort!: () => void;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    rejectAbort = () => reject(external?.aborted ? external.reason : new UnknownResult());
+    controller.signal.addEventListener('abort', rejectAbort, { once: true });
+  });
+  external?.addEventListener('abort', forwardAbort, { once: true });
+  // One deadline includes both response headers and the complete response body.
+  const deadline = setTimeout(() => controller.abort(), 20_000);
   try {
-    response = await fetcher(`/api/v2${path}`, { ...options, credentials: 'include', cache: 'no-store' });
-  } catch (error) {
-    if (options.signal?.aborted) throw error;
-    throw new UnknownResult();
+    let response: Response;
+    try {
+      response = await Promise.race([fetcher(`/api/v2${path}`, { ...options, signal: controller.signal, credentials: 'include', cache: 'no-store' }), aborted]);
+    } catch {
+      if (external?.aborted) throw external.reason;
+      throw new UnknownResult();
+    }
+    let body: unknown;
+    try { body = response.status === 204 ? null : await Promise.race([response.json(), aborted]); }
+    catch {
+      if (external?.aborted) throw external.reason;
+      throw new UnknownResult();
+    }
+    if (!response.ok) {
+      const envelope = body as { error?: { code?: unknown; message?: unknown } } | null;
+      throw new ApiFailure(response.status, typeof envelope?.error?.code === 'string' ? envelope.error.code : 'unknown_error',
+        typeof envelope?.error?.message === 'string' ? envelope.error.message : undefined);
+    }
+    return body as T;
+  } finally {
+    clearTimeout(deadline);
+    external?.removeEventListener('abort', forwardAbort);
+    controller.signal.removeEventListener('abort', rejectAbort);
   }
-  let body: unknown;
-  try { body = response.status === 204 ? null : await response.json(); }
-  catch { throw new UnknownResult(); }
-  if (!response.ok) {
-    const envelope = body as { error?: { code?: unknown; message?: unknown } } | null;
-    throw new ApiFailure(response.status, typeof envelope?.error?.code === 'string' ? envelope.error.code : 'unknown_error',
-      typeof envelope?.error?.message === 'string' ? envelope.error.message : undefined);
-  }
-  return body as T;
 }
 
 export const get = <T>(path: string, signal?: AbortSignal) => request<T>(path, { signal });

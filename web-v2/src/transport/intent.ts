@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ApiFailure, UnknownResult, errorMessage, post } from './http.ts';
+import { newRequestId } from './ids.ts';
 
 interface Intent { path: string; body: Record<string, unknown>; status: 'sending' | 'unknown' | 'retryable' | 'rejected'; error: string }
 /** Room operations have idempotent replay, but no general receipt lookup endpoint. */
@@ -21,8 +22,8 @@ export function useIntent<T>(scope: string, onSuccess: (result: T) => void | Pro
       await callbacks.current.onSuccess(result);
     } catch (error) {
       if (ticket !== generation.current) return;
-      const status = error instanceof UnknownResult ? 'unknown' : error instanceof ApiFailure && [429, 503].includes(error.status) ? 'retryable' : 'rejected';
-      const failed: Intent = { ...value, status, error: errorMessage(error) };
+      const status = error instanceof UnknownResult || error instanceof ApiFailure && (error.status >= 500 || error.status === 408) ? 'unknown' : error instanceof ApiFailure && error.status === 429 ? 'retryable' : 'rejected';
+      const failed: Intent = { ...value, status, error: errorMessage(status === 'unknown' ? new UnknownResult() : error) };
       current.current = failed; setIntent(failed); callbacks.current.onError?.(error);
     }
   };
@@ -32,7 +33,7 @@ export function useIntent<T>(scope: string, onSuccess: (result: T) => void | Pro
     unresolved: intent?.status === 'unknown' || intent?.status === 'retryable',
     run: (path: string, body: Record<string, unknown> = {}) => {
       if (current.current && current.current.status !== 'rejected') return Promise.resolve();
-      return send({ path, body: structuredClone({ ...body, requestId: crypto.randomUUID() }), status: 'rejected', error: '' });
+      return send({ path, body: structuredClone({ ...body, requestId: newRequestId() }), status: 'rejected', error: '' });
     },
     retry: () => current.current && current.current.status !== 'sending' ? send(current.current) : Promise.resolve(),
   };

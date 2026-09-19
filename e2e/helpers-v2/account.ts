@@ -17,10 +17,13 @@ export interface RoomAccount extends LoginAccount {
   userId: string;
 }
 
+export type FullGameAccount = RoomAccount;
+
 export interface AccountCase extends RegistrationAccount {
   lost: RegistrationAccount;
   reset: ResetAccount;
   rooms?: RoomAccount[];
+  fullGame?: FullGameAccount[];
 }
 
 export function loadAccountCase(projectName: string): AccountCase {

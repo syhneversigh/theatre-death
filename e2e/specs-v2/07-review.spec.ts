@@ -166,6 +166,38 @@ test('房主结束复盘发送同一gameId/requestId并保留未知结果；非�
   void noHost;
 });
 
+test('复盘管理转移房主未知结果返回复盘后再入管理，沿用同一 requestId 和原操作 body', async ({ page }) => {
+  const fixture = loadReviewFixture();
+  fixture.view.room.formalMembers[1]!.presence = 'online';
+  fixture.view.capabilities.room.transferHost = { allowed: true, reason: null };
+  let current = fixture;
+  let attempts = 0;
+  const bodies: Array<Record<string, unknown>> = [];
+  await page.route('**/__game-fixture', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(current) }));
+  await page.route('**/api/v2/rooms/*/review', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(loadReviewDocument()) }));
+  await page.route('**/api/v2/rooms/*/transfer-host', async route => {
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    bodies.push(structuredClone(body)); attempts += 1;
+    if (attempts === 1) { await route.abort('failed'); return; }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ hostMemberId: fixture.view.room.formalMembers[1]!.memberId }) });
+  });
+  await page.goto('/game-test.html');
+  await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
+  await page.getByRole('button', { name: '房间管理' }).click();
+  const target = page.locator('.member-card').filter({ hasText: fixture.view.room.formalMembers[1]!.username }).first();
+  await target.getByRole('button', { name: '转移房主' }).click();
+  await page.getByRole('dialog', { name: '转移房主？' }).getByRole('button', { name: '确认操作' }).click();
+  await expect(page.getByRole('alert')).toContainText('尚未确认结果');
+  await page.getByRole('button', { name: '返回复盘' }).click();
+  await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
+  await page.getByRole('button', { name: '房间管理' }).click();
+  await expect(page.getByRole('alert')).toContainText('尚未确认结果');
+  await page.getByRole('alert').getByRole('button', { name: '确认原操作结果' }).click();
+  await expect.poll(() => bodies.length).toBe(2);
+  expect(bodies[1]).toEqual(bodies[0]);
+  expect(typeof bodies[0]?.requestId).toBe('string');
+});
+
 test('私人第二屏只读显示当前授权窗口与当前提交，不显示动作按钮/requestId；公开观众没有角色', async ({ page }) => {
   const privateFixture = loadObservedActionsFixture();
   const mounted = await mountPlaying(page, privateFixture);

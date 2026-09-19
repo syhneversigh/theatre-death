@@ -52,7 +52,7 @@ export function GameHarness() {
     : view.room.phase === 'review'
       ? <ReviewPage key={sceneKey(view)} {...props}/>
       : <Lobby key={sceneKey(view)} {...props}/>;
-  return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><section className="home-main">{content}</section></main>;
+  return <main className={`home-layout ${view.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation" aria-hidden="true"/><section className="home-main">{content}</section></main>;
 }
 
 function applyFixture(next: GameHarnessFixture): void {

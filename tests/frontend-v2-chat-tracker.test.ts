@@ -110,12 +110,16 @@ describe('v2 chat model', () => {
   });
 
   it('classifies 4xx as failed and 429/5xx as unknown, retaining error code for retry', async () => {
-    for (const error of [new ApiFailure(400, 'chat_forbidden'), new ApiFailure(429, 'rate_limited'), new ApiFailure(500, 'internal_error'), new ApiFailure(502, 'bad_gateway'), new ApiFailure(503, 'temporary'), new Error('network lost')]) {
+    for (const error of [new ApiFailure(400, 'chat_forbidden'), new ApiFailure(408, 'timeout'), new ApiFailure(429, 'rate_limited'), new ApiFailure(500, 'internal_error'), new ApiFailure(502, 'bad_gateway'), new ApiFailure(503, 'temporary'), new ApiFailure(504, 'gateway_timeout'), new Error('network lost')]) {
       const h = harness(); h.send.mockRejectedValueOnce(error);
       const id = error instanceof ApiFailure ? String(error.status) : 'network';
       await h.tracker.submit('public', 'hello', 'client-' + id);
-      expect(h.tracker.list()[0]?.status).toBe(error instanceof ApiFailure && error.status < 500 && error.status !== 429 ? 'failed' : 'unknown');
+      expect(h.tracker.list()[0]?.status).toBe(error instanceof ApiFailure && error.status < 500 && ![408, 429].includes(error.status) ? 'failed' : 'unknown');
       expect(h.tracker.list()[0]?.code).toBe(error instanceof ApiFailure ? error.code : null);
+      if (error instanceof ApiFailure && [408, 429, 500, 502, 503, 504].includes(error.status)) {
+        await h.tracker.retry('client-' + id);
+        expect(h.send.mock.calls[1]?.[0]).toEqual(h.send.mock.calls[0]?.[0]);
+      }
     }
   });
 

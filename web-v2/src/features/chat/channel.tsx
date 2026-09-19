@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { RoomSnapshot } from '../../../../contracts/v2.ts';
 import { post } from '../../transport/http.ts';
+import { newRequestId } from '../../transport/ids.ts';
 import { CHAT_MAX_LENGTH, ChatTracker, canPost, chatMessages, chatScope, chatTextIssue } from './model.ts';
 import type { ChatAcknowledgement, ChatChannel, OutgoingMessage } from './model.ts';
 
@@ -50,7 +51,7 @@ export function ChatChannelView({ view, channel, online, active, refresh, onUnre
     const text = draft, owner = tracker.current;
     if (!owner) return;
     // Retain the text in the outgoing record while allowing a fresh composer draft.
-    setDraft(''); void owner.submit(channel, text, crypto.randomUUID());
+    setDraft(''); void owner.submit(channel, text, newRequestId());
   };
   return <section className="chat-channel" aria-label={`${label}交流`}>
     <div className="chat-history" ref={scroll} tabIndex={0} aria-label={`${label}历史`} onScroll={event => {

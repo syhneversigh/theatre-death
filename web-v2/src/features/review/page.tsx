@@ -9,14 +9,16 @@ import { reviewEventText, reviewScope } from './model.ts';
 import type { ReviewDTO } from './model.ts';
 import { navigateTabs } from '../../components/tab-navigation.ts';
 
-export function ReviewPage({ view, catalog, online, refresh, remaining, onExit, onExpired }: {
+export function ReviewPage({ view, catalog, online, active = true, refresh, remaining, onExit, onExpired }: {
   view: RoomSnapshot; catalog: CatalogDTO; online: boolean; refresh: () => Promise<void>;
-  remaining: (deadline: number) => number | null; onExit: (message: string) => void; onExpired: () => void;
+  remaining: (deadline: number) => number | null; onExit: (message: string) => void; onExpired: () => void; active?: boolean;
 }) {
   const [review, setReview] = useState<ReviewDTO | null>(null), [error, setError] = useState('');
   const [retry, setRetry] = useState(0), [confirm, setConfirm] = useState(false), [manage, setManage] = useState(false);
+  const [managementVisited, setManagementVisited] = useState(false);
   const [tab, setTab] = useState<'players' | 'timeline' | 'public' | 'faction'>('players');
   const [limit, setLimit] = useState(100);
+  useEffect(() => { if (!active) setConfirm(false); }, [active]);
   const scope = reviewScope(view), latest = useRef(view); latest.current = view;
   useEffect(() => {
     const controller = new AbortController(); let active = true;
@@ -30,12 +32,11 @@ export function ReviewPage({ view, catalog, online, refresh, remaining, onExit, 
   }, [scope, retry]);
   const finish = useIntent<{ roomId: string }>(scope, async () => { setConfirm(false); setReview(null); await refresh(); }, () => { void refresh(); });
   const canFinish = online && view.capabilities.room.endReview.allowed && !finish.busy;
-  if (manage) return <><button className="button" onClick={() => setManage(false)}>返回复盘</button><Lobby view={view} catalog={catalog} online={online} refresh={refresh} remaining={remaining} onExit={onExit} onExpired={onExpired}/></>;
   const result = view.public?.result;
   const winner = result?.winner ?? review?.winner;
   const messages = review && (tab === 'public' || tab === 'faction') ? review.chat[tab] : [];
-  return <section className="review-page">
-    <header className="room-heading"><div><span className="eyebrow">AFTER THE CURTAIN</span><h1>演出落幕</h1><p>{winner === 'human' ? '人类阵营获胜' : winner === 'death_faction' ? '死神阵营获胜' : '正在同步结局'}</p></div><button className="button" onClick={() => setManage(true)}>房间管理</button></header>
+  return <>{managementVisited && <div hidden={!active || !manage}><button className="button" onClick={() => setManage(false)}>返回复盘</button><Lobby active={active && manage} view={view} catalog={catalog} online={online} refresh={refresh} remaining={remaining} onExit={onExit} onExpired={onExpired}/></div>}<section className="review-page" hidden={!active || manage}>
+    <header className="room-heading"><div><span className="eyebrow">AFTER THE CURTAIN</span><h1>演出落幕</h1><p>{winner === 'human' ? '人类阵营获胜' : winner === 'death_faction' ? '死神阵营获胜' : '正在同步结局'}</p></div><button className="button" onClick={() => { setManagementVisited(true); setManage(true); }}>房间管理</button></header>
     <p>房间 {view.room.code} · 第 {result?.dayNumber ?? review?.endedAtDay ?? '—'} 轮结束</p>
     <p>{result?.reason ?? review?.reason}</p>
     {review && <p className="muted">本局用时 {Math.floor(review.durationMs / 60_000)} 分 {Math.floor(review.durationMs / 1000) % 60} 秒 · {review.players.length} 位玩家</p>}
@@ -51,6 +52,6 @@ export function ReviewPage({ view, catalog, online, refresh, remaining, onExit, 
     </div></>}
     {finish.intent?.error && <Notice error>{finish.intent.error}{finish.unresolved && <button className="button" disabled={!canFinish} onClick={() => void finish.retry()}>确认原结束操作</button>}</Notice>}
     {view.capabilities.room.endReview.allowed && <button className="button button--primary" disabled={!canFinish || finish.unresolved} onClick={() => setConfirm(true)}>结束复盘，返回大厅</button>}
-    {confirm && <Modal title="结束本局复盘？" onClose={() => setConfirm(false)} dismissible={!finish.busy}><p>所有成员返回原房间大厅，正式玩家需重新准备；本局第二屏授权失效。下一局重新分配座位和身份。</p>{finish.intent?.error && <Notice error>{finish.intent.error}{finish.unresolved && <button className="button" disabled={!canFinish} onClick={() => void finish.retry()}>确认原结束操作</button>}</Notice>}<div className="button-row"><button className="button" disabled={finish.busy} onClick={() => setConfirm(false)}>取消</button><button className="button button--primary" disabled={!canFinish || finish.unresolved} onClick={() => void finish.run(`/rooms/${view.room.code}/end-review`, { gameId: view.gameId })}>确认结束复盘</button></div></Modal>}
-  </section>;
+    {active && confirm && <Modal title="结束本局复盘？" onClose={() => setConfirm(false)} dismissible={!finish.busy}><p>所有成员返回原房间大厅，正式玩家需重新准备；本局第二屏授权失效。下一局重新分配座位和身份。</p>{finish.intent?.error && <Notice error>{finish.intent.error}{finish.unresolved && <button className="button" disabled={!canFinish} onClick={() => void finish.retry()}>确认原结束操作</button>}</Notice>}<div className="button-row"><button className="button" disabled={finish.busy} onClick={() => setConfirm(false)}>取消</button><button className="button button--primary" disabled={!canFinish || finish.unresolved} onClick={() => void finish.run(`/rooms/${view.room.code}/end-review`, { gameId: view.gameId })}>确认结束复盘</button></div></Modal>}
+  </section></>;
 }
