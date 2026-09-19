@@ -82,6 +82,29 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .nav-profile { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; padding-top: 32px; }
 .nav-profile > span:not(.avatar) { max-width: 115px; overflow: hidden; text-overflow: ellipsis; }
 .nav-profile button { margin-left: 53px; }
+.admin-layout { display: grid; grid-template-columns: 228px minmax(0,1fr); min-height: 100svh; }
+.admin-login { min-height: 100svh; display: grid; place-items: center; padding: 28px; background: radial-gradient(ellipse at top,#dce3ed88,transparent 65%),#f6f7f9; }
+.admin-login .auth-card { margin: 0; padding: 42px; border-radius: var(--radius); }
+.admin-login .auth-card > svg { width: 44px; color: #8290a6; }
+.admin-main { max-width: 1180px; }
+.admin-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; margin: 28px 0; }
+.admin-stats article { display: grid; gap: 8px; padding: 24px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); }
+.admin-stats strong { font-size: 30px; font-family: "Songti SC","SimSun",serif; }
+.admin-stats span { font-size: 12px; color: var(--muted); }
+.admin-filters, .admin-create { display: flex; align-items: end; gap: 14px; margin: 24px 0; }
+.admin-filters .field, .admin-create .field { margin: 0; min-width: 180px; }
+.admin-create { justify-content: space-between; }
+.admin-card-list { display: grid; gap: 12px; }
+.admin-account { display: flex; gap: 16px; align-items: flex-start; margin: 0; }
+.admin-account__body { min-width: 0; flex: 1; }
+.admin-account__body h2 { margin-bottom: 7px; overflow-wrap: anywhere; }
+.admin-table-wrap { overflow-x: auto; }
+.admin-table-wrap table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 12px; }
+.admin-table-wrap th, .admin-table-wrap td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.admin-table-wrap th { color: var(--muted); font-weight: 600; }
+.admin-table-wrap td small { display: block; margin-top: 5px; color: var(--muted); overflow-wrap: anywhere; }
+.admin-table-wrap .button-row { flex-wrap: nowrap; }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 24px 0; font-size: 12px; color: var(--muted); }
 .home-main { max-width: 1280px; width: 100%; margin: 0 auto; padding: 58px 6%; }
 .page-heading h1 { margin: 13px 0 11px; font-size: 31px; letter-spacing: .05em; }
 .page-heading p { font-size: 13px; color: var(--muted); }
@@ -285,6 +308,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .auth-world h1 { font-size: 39px; }
   .auth-panel { padding: 30px; }
   .home-layout { grid-template-columns: 180px minmax(0,1fr); }
+  .admin-layout { grid-template-columns: 180px minmax(0,1fr); }
+  .admin-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .navigation { padding: 30px 15px; }
   .home-main { padding: 36px 5%; }
   .lobby-grid { grid-template-columns: minmax(0,1fr); gap: 0; }
@@ -308,6 +333,22 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .auth-card h2 { font-size: 27px; }
   .field input, .field select, .field textarea { font-size: 16px; }
   .home-layout { display: block; }
+  .admin-layout { display: block; }
+  .admin-stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .admin-filters, .admin-create { align-items: stretch; flex-direction: column; }
+  .admin-filters .field, .admin-create .field, .admin-filters .button, .admin-create .button { width: 100%; }
+  .admin-account { flex-wrap: wrap; }
+  .admin-account__body { flex-basis: calc(100% - 60px); }
+  .admin-account .button-row { margin-left: -60px; flex-wrap: wrap; }
+  .admin-invitation-table { overflow: visible; padding: 18px; }
+  .admin-invitation-table table, .admin-invitation-table tbody, .admin-invitation-table tr, .admin-invitation-table td { display: block; min-width: 0; width: 100%; }
+  .admin-invitation-table thead { display: none; }
+  .admin-invitation-table tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .admin-invitation-table tr:last-child { border-bottom: 0; }
+  .admin-invitation-table td { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 10px; padding: 7px 0; border: 0; line-height: 1.6; overflow-wrap: anywhere; }
+  .admin-invitation-table td::before { content: attr(data-label); color: var(--muted); font-size: 11px; }
+  .admin-invitation-table td .button-row { justify-content: flex-start; flex-wrap: wrap; gap: 4px 14px; }
+  .admin-invitation-table .text-button { min-width: 56px; min-height: 44px; padding: 8px; }
   .navigation { padding: 15px 20px; flex-direction: row; align-items: center; gap: 14px; border-right: 0; border-bottom: 1px solid var(--line); }
   .brand { padding: 0; }
   .brand svg { width: 30px; }

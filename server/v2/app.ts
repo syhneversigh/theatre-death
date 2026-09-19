@@ -32,8 +32,9 @@ import type { ActiveMember, StableRoom } from './stable-room.ts';
 import { OperationReceipts } from './operation-receipts.ts';
 import { bootstrap, catalog, AVATAR_LIMITS } from './catalog.ts';
 import type { AvatarStore } from './avatars.ts';
+import { createAdminRouter } from './admin-router.ts';
 
-export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; secureCookies?: boolean; avatars?: AvatarStore; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
+export interface V2Deps { accounts: AccountStore; clock: Clock; logStore: LogStore; origin: string; cookieName?: string; adminCookieName?: string; secureCookies?: boolean; adminPassword?: string | null; avatars?: AvatarStore; voice?: VoiceService | null; verifyWebhook?: (body: string, authorization?: string) => Promise<{ event: string; room?: { name: string }; participant?: { identity: string } }> }
 
 export function createV2App(deps: V2Deps) {
   const { accounts, clock } = deps;
@@ -90,6 +91,7 @@ export function createV2App(deps: V2Deps) {
       refresh(room);
     }));
   };
+  const admin = createAdminRouter({ accounts, directory, governance, ...(deps.avatars ? { avatars: deps.avatars } : {}), ...(deps.adminCookieName ? { adminCookieName: deps.adminCookieName } : {}), origin: deps.origin, secureCookies: deps.secureCookies ?? false, password: deps.adminPassword ?? null, refresh, revokeUser });
 
   const app = express();
   app.disable('x-powered-by');
@@ -134,6 +136,7 @@ export function createV2App(deps: V2Deps) {
     next();
   });
   app.use('/api/v2/auth', authRouter(accounts, deps.secureCookies ?? false, revokeUser, deps.cookieName));
+  app.use('/api/v2/admin', admin.router);
   app.get('/api/v2/bootstrap', (_req, res) => res.json(bootstrap(!!deps.voice, !!deps.avatars)));
   app.get('/api/v2/catalog', (_req, res) => res.json(catalog()));
   app.get('/healthz', (_req, res) => res.json({ status: 'ok', apiVersion: 2, contractVersion: CONTRACT_VERSION, rulesVersion: '2.0' }));
@@ -332,7 +335,7 @@ export function createV2App(deps: V2Deps) {
   return {
     app, registry, directory, access, hub, router, refresh, snapshots, presence, governance, empty, rounds, grants, revokeUser, media, maintenance,
     close() {
-      closing = true; maintenance.stop(); diagnostics.close(); hub.close(); presence.close(); empty.close();
+      closing = true; maintenance.stop(); diagnostics.close(); admin.close(); hub.close(); presence.close(); empty.close();
       for (const room of directory.byId.values()) { room.runtime?.driver?.dispose(); room.access?.close(); }
     },
     async drain() {

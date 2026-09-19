@@ -8,7 +8,7 @@ export function createFrontendApp(api: Express, directory: string): Express {
   if (!existsSync(index)) throw new Error('Frontend build is missing index.html');
   const app = express();
   app.disable('x-powered-by');
-  app.get(['/', '/index.html'], (_req, res) => {
+  app.get(['/', '/index.html', '/admin', '/admin/'], (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.sendFile(index);

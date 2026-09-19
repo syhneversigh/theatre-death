@@ -42,7 +42,7 @@ export class SnapshotCursor {
 
 export function controlEffect(reason: ControlReason): 'exit' | 'login' | 'refresh' | 'clear-game' | 'clear-private' {
   switch (reason) {
-    case 'session_expired': return 'login';
+    case 'session_expired': case 'account_disabled': return 'login';
     case 'host_changed': return 'refresh';
     case 'review_ended': return 'clear-game';
     case 'screen_revoked': return 'clear-private';

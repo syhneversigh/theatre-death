@@ -8,6 +8,8 @@ services:
       NODE_ENV: development
       PUBLIC_BASE_URL: http://theater-smoke:3000
       ACCOUNT_COOKIE_NAME: td_account_frontend_smoke
+      ADMIN_COOKIE_NAME: td_admin_frontend_smoke
+      ADMIN_PASSWORD: Admin-test-only-password-2026
       DATA_DIR: /app/data-frontend-v2
       VOICE_ENABLED: 'false'
     volumes:
@@ -33,6 +35,7 @@ services:
     profiles: [smoke]
     environment:
       FRONTEND_BASE_URL: http://theater-smoke:3000
+      ADMIN_TEST_PASSWORD: Admin-test-only-password-2026
     command: [npx, playwright, test, --config=playwright.v2.config.ts, specs-v2/13-release-smoke.spec.ts]
     volumes:
       - ../e2e/specs-v2:/e2e/specs-v2:ro

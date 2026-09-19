@@ -149,7 +149,7 @@ export class RoomDirectory {
     member.presence = 'offline'; member.disconnectAt = null;
     if (oldSession) this.deps.control(room, oldSession, reason);
   }
-  removeMember(room: StableRoom, member: ActiveMember, reason: 'left' | 'kicked'): void {
+  removeMember(room: StableRoom, member: ActiveMember, reason: 'left' | 'kicked' | 'account_disabled'): void {
     this.releaseControl(room, member, reason);
     if (member.kind !== 'formal') room.access?.unwatch(member.userId);
     room.members.delete(member.userId);

@@ -19,7 +19,7 @@ const logStore = createLogStore(join(config.dataDir, 'audit.sqlite'));
 const voice = config.voiceEnabled ? createLiveKitVoiceService({ adminUrl: process.env.VOICE_ADMIN_URL || process.env.VOICE_SERVICE_URL!, publicUrl: process.env.VOICE_SERVICE_URL!, apiKey: process.env.LIVEKIT_API_KEY!, apiSecret: process.env.LIVEKIT_API_SECRET!, tokenTtlSeconds: 30, removeUnknownParticipants: true }) : null;
 const verifier = voice ? new WebhookReceiver(process.env.LIVEKIT_API_KEY!, process.env.LIVEKIT_API_SECRET!) : null;
 const avatars = new AvatarStore(accounts, join(config.dataDir, 'avatars'));
-const backend = createV2App({ accounts, clock, logStore, avatars, origin: config.origin, cookieName: config.cookieName, secureCookies: config.secureCookies, voice, ...(verifier ? { verifyWebhook: (body: string, auth?: string) => verifier.receive(body, auth) } : {}) });
+const backend = createV2App({ accounts, clock, logStore, avatars, origin: config.origin, cookieName: config.cookieName, adminCookieName: config.adminCookieName, secureCookies: config.secureCookies, adminPassword: config.adminPassword, voice, ...(verifier ? { verifyWebhook: (body: string, auth?: string) => verifier.receive(body, auth) } : {}) });
 const app = process.env.WEB_ROOT ? createFrontendApp(backend.app, process.env.WEB_ROOT) : backend.app;
 const server = createServer(app);
 backend.hub.attachV2(server);

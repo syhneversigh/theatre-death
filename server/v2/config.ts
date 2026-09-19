@@ -17,5 +17,10 @@ export function configuration(env: NodeJS.ProcessEnv = process.env) {
   }
   const cookieName = env.ACCOUNT_COOKIE_NAME ?? 'td_account_v2';
   if (!/^[a-zA-Z0-9_]{1,64}$/.test(cookieName)) throw new Error('Invalid ACCOUNT_COOKIE_NAME');
-  return { production, origin, port, cookieName, secureCookies: url.protocol === 'https:', dataDir: env.DATA_DIR ?? './data-v2', voiceEnabled };
+  const adminPassword = env.ADMIN_PASSWORD || null;
+  if (adminPassword !== null && (adminPassword.length < 16 || adminPassword.length > 256)) throw new Error('ADMIN_PASSWORD must contain 16 to 256 characters');
+  if (adminPassword !== null && ['replace-with-a-long-unique-admin-password', 'change-me-admin-password'].includes(adminPassword.toLowerCase())) throw new Error('Refusing placeholder ADMIN_PASSWORD');
+  const adminCookieName = env.ADMIN_COOKIE_NAME ?? 'td_admin_v2';
+  if (!/^[a-zA-Z0-9_]{1,64}$/.test(adminCookieName) || adminCookieName === cookieName) throw new Error('Invalid ADMIN_COOKIE_NAME');
+  return { production, origin, port, cookieName, adminCookieName, secureCookies: url.protocol === 'https:', dataDir: env.DATA_DIR ?? './data-v2', voiceEnabled, adminPassword };
 }

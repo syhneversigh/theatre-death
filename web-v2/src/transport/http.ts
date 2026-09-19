@@ -60,6 +60,7 @@ const messages: Record<string, string> = {
   invalid_credentials: '账号或密码不正确，请重试。', invalid_invitation: '邀请码无效、已使用或已过期。',
   username_taken: '这个账号已被使用，请换一个。', invalid_username: '账号格式不符合要求。', invalid_password: '密码格式不符合要求。',
   unauthorized: '请先登录。', session_expired: '登录已失效，请重新登录。',
+  account_disabled: '账户已停用，请联系维护者。',
   takeover_required: '此身份正在另一台设备上使用，请确认是否接管。',
   already_in_room: '你已有当前房间，请先返回或明确离开该房间。',
   room_not_found: '房间不存在或已结束。', room_full: '正式席位已满，你仍保持观战身份。',

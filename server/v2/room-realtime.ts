@@ -10,7 +10,7 @@ import type { StableRoom } from './stable-room.ts';
 import { HEARTBEAT_INTERVAL_MS, HEARTBEAT_TIMEOUT_MS, type MemberPresence } from './presence.ts';
 
 interface RealtimeDeps { directory: RoomDirectory; snapshots: RoomSnapshots; presence: MemberPresence; origin: string; cookieName?: string }
-const terminal = new Set<ControlReason>(['kicked', 'dissolved', 'taken_over', 'session_expired', 'left', 'screen_revoked']);
+const terminal = new Set<ControlReason>(['kicked', 'dissolved', 'taken_over', 'session_expired', 'account_disabled', 'left', 'screen_revoked']);
 
 /** Room subscriptions survive match changes. Each frame rechecks the current account and lease. */
 export function createRoomRealtime(deps: RealtimeDeps) {

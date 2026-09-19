@@ -61,6 +61,13 @@ describe('v2 frontend static delivery', () => {
     const index = await fetch(base + '/index.html');
     expect(index.status).toBe(200);
     expect(index.headers.get('cache-control')).toBe('no-store');
+    for (const path of ['admin', 'admin/']) {
+      const admin = await fetch(base + '/' + path);
+      expect(admin.status).toBe(200);
+      expect(await admin.text()).toContain('<title>frontend</title>');
+      expect(admin.headers.get('cache-control')).toBe('no-store');
+      expect(admin.headers.get('x-content-type-options')).toBe('nosniff');
+    }
     const hashed = await fetch(base + '/assets/hash-abcdefgh.js');
     expect(hashed.status).toBe(200);
     expect(hashed.headers.get('cache-control')).toContain('immutable');
@@ -79,6 +86,8 @@ describe('v2 frontend static delivery', () => {
     expect(missing.status).toBe(404);
     expect(missing.headers.get('content-type')).toContain('application/json');
     expect(await missing.json()).toMatchObject({ error: { code: 'not_found' } });
+    const unknownPage = await fetch(base + '/admin/unknown');
+    expect(unknownPage.status).toBe(404);
   });
 
   it('does not expose game-test/source/dotenv paths or traversal paths', async () => {

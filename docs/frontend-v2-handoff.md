@@ -22,32 +22,38 @@ docker build -f deploy/Dockerfile.dependencies -t theater-death-contract-deps:sh
 ```
 
 ```powershell
+Copy-Item .env.frontend-local.example .env.frontend-local
+# 编辑 .env.frontend-local，将 ADMIN_PASSWORD 换成至少16位且仅本环境使用的密码。
 $env:FRONTEND_VCS_REF = git rev-parse HEAD
-docker compose -f deploy/compose.frontend-local.yml build app
-docker compose -f deploy/compose.frontend-local.yml up -d app
-docker compose -f deploy/compose.frontend-local.yml ps
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml build app
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml up -d app
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml ps
 ```
 
 构建含根类型检查、新前端类型检查、完整单元/API门禁和生产前端构建；只在最终候选检查点执行，不把它用作每个小改动的增量验证。运行时不挂载源码或测试时钟。
 
 访问 http://localhost:5174。PUBLIC_BASE_URL是精确来源，localhost与127.0.0.1不可随意互换；当前端口只绑定本机回环地址。
 
+管理入口为 http://localhost:5174/admin，使用 `.env.frontend-local` 中的 `ADMIN_PASSWORD`，不使用玩家账号。没有配置密码时管理API关闭，页面只显示配置说明；项目不提供默认管理员密码。管理员会话固定两小时，并在服务重启后失效。
+
 ## 账号维护
 
 新卷初始没有玩家账号。维护者在本机生成邀请码，再通过页面注册：
 
 ```powershell
-docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts invite
-docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts reset-password 'player_name'
-docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts revoke-invite 'invitation_id'
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts invite
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts reset-password 'player_name'
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts revoke-invite 'invitation_id'
 ```
 
 将player_name和invitation_id替换为实际账号与邀请码ID。这些命令输出的一次性码应私下交给对应玩家，不放入截图、Git或验收报告。密码重置码由维护者签发，页面不提供邮件找回。
 
+日常管理建议使用 `/admin`：可以搜索、改名、清除头像、注销会话、停用/启用账户，查看邀请码状态并生成、调整到期时间、撤销或重新生成。账户停用可恢复；大厅席位会释放，对局/复盘席位保留为离线，避免破坏结算和历史。邀请码与重置码原文只在生成弹窗显示一次，数据库不保存原文。详细行为及接口见 `frontend-v2-admin.md` 和 `openapi-admin-v2.1.json`。
+
 ## 停止与数据
 
 ```powershell
-docker compose -f deploy/compose.frontend-local.yml down
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml down
 ```
 
 该命令保留命名数据卷；不要加-v，除非明确要删除此环境全部账号、头像和审计数据。当前版本不承诺服务器重启恢复正在进行的对局。生产迁移、脱敏和公网入口切换由用户后续另行安排。

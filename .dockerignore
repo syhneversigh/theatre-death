@@ -4,6 +4,7 @@ data
 coverage
 .env
 .env.v2
+.env.frontend-local
 data-v2/
 data-v2-test/
 data-v2-load/

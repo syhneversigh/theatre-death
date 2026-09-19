@@ -14,8 +14,10 @@ services:
       NODE_ENV: development
       PUBLIC_BASE_URL: http://localhost:5174
       ACCOUNT_COOKIE_NAME: td_account_frontend_local
+      ADMIN_COOKIE_NAME: td_admin_frontend_local
       DATA_DIR: /data
       VOICE_ENABLED: 'false'
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     volumes:
       - frontend-local-data:/data
     init: true

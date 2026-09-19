@@ -9,6 +9,7 @@ data-contract-2.1/
 test-results-v2/
 .env.v2
 .env
+.env.frontend-local
 e2e-results/
 e2e/results/
 data-frontend-v2/

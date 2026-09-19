@@ -77,6 +77,27 @@ describe('v2 configuration validation', () => {
     expect(JSON.stringify(result)).not.toContain(secret);
     expect(JSON.stringify(result)).not.toContain('x'.repeat(32));
   });
+
+  it('defaults and validates the independent admin cookie name', () => {
+    expect(configuration(env()).adminCookieName).toBe('td_admin_v2');
+    expect(configuration(env({ ADMIN_COOKIE_NAME: 'theater_admin_2' })).adminCookieName).toBe('theater_admin_2');
+    for (const cookieName of ['', 'has-dash', 'has space', 'a.b', 'x'.repeat(65)]) {
+      expect(() => configuration(env({ ADMIN_COOKIE_NAME: cookieName }))).toThrow('Invalid ADMIN_COOKIE_NAME');
+    }
+    expect(() => configuration(env({ ACCOUNT_COOKIE_NAME: 'shared_cookie', ADMIN_COOKIE_NAME: 'shared_cookie' }))).toThrow('Invalid ADMIN_COOKIE_NAME');
+  });
+
+  it('validates optional ADMIN_PASSWORD for server initialization; public responses must omit it', () => {
+    expect(configuration(env()).adminPassword).toBeNull();
+    expect(() => configuration(env({ ADMIN_PASSWORD: 'x'.repeat(15) }))).toThrow(/ADMIN_PASSWORD/);
+    for (const example of ['replace-with-a-long-unique-admin-password', 'change-me-admin-password']) {
+      expect(() => configuration(env({ ADMIN_PASSWORD: example }))).toThrow(/ADMIN_PASSWORD/);
+    }
+    const password = 'a-valid-admin-password-16';
+    const result = configuration(env({ ADMIN_PASSWORD: password }));
+    expect(result.adminPassword).toBe(password);
+    expect(JSON.stringify(result)).toContain(password);
+  });
 });
 
 describe('v2 RateLimits', () => {

@@ -121,7 +121,7 @@ describe('v2 frontend control and profile guards', () => {
   it('maps every control reason to the required client effect', () => {
     const expected: Record<ControlReason, ReturnType<typeof controlEffect>> = {
       host_changed: 'refresh', review_ended: 'clear-game', screen_revoked: 'clear-private',
-      session_expired: 'login', kicked: 'exit', dissolved: 'exit', taken_over: 'exit', left: 'exit',
+      session_expired: 'login', account_disabled: 'login', kicked: 'exit', dissolved: 'exit', taken_over: 'exit', left: 'exit',
     };
     for (const [reason, effect] of Object.entries(expected) as [ControlReason, ReturnType<typeof controlEffect>][]) {
       expect(controlEffect(reason)).toBe(effect);

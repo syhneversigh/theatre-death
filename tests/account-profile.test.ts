@@ -106,8 +106,8 @@ describe('account profile and schema migration contract', () => {
     expect(reopened.profile('legacy-account').profileVersion).toBe(0);
     reopened.close(); stores.splice(stores.indexOf(reopened), 1);
     const schema = new DatabaseSync(path);
-    expect(Number(schema.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()!.version)).toBe(2);
-    schema.prepare('INSERT INTO schema_migrations VALUES (3)').run();
+    expect(Number(schema.prepare('SELECT MAX(version) AS version FROM schema_migrations').get()!.version)).toBe(3);
+    schema.prepare('INSERT INTO schema_migrations VALUES (4)').run();
     schema.close();
     expect(() => new AccountStore(path, () => now.value)).toThrowError('Unsupported account schema version');
   });
@@ -183,7 +183,7 @@ describe('account profile and schema migration contract', () => {
     const store = new AccountStore(':memory:', () => now.value);
     stores.push(store);
     const server = await serve(store, now);
-    const expiring = store.invite('register', undefined, 100);
+    const expiring = store.invite('register', undefined, 300_000);
     now.value = expiring.expiresAt;
     expect((await server.request('/invitations/check', jsonPost({ invitation: expiring.token }))).status).toBe(403);
     const usable = store.invite();

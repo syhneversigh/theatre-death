@@ -4,7 +4,16 @@
 
 ## 当前交付状态
 
-2026-09-19文字版完整前后端本地交付验收通过，F00～F10完成，集成分支frontend/v2。F09检查点33a1bd4；完整镜像产品源码a9ad5a6，79文件504项单元/API、根与前端类型检查及生产构建均通过。13实际镜像的Chromium/WebKit同源注册、头像、Socket、开局和非安全HTTP请求ID兼容各1/1通过，截图已审阅。localhost:5174已健康启动，使用独立新数据卷；测试项目已停止，测试数据卷保留。操作见frontend-v2-handoff.md，镜像/产物哈希见frontend-v2-release.json。真实语音为条件项未验收；公网部署和正式数据脱敏/迁移由用户后续处理。
+2026-09-19文字版完整前后端本地交付验收通过，F00～F10完成，集成分支frontend/v2。其后用户批准增加独立账户与邀请码管理系统，当前在frontend/admin-console收口：数据库schema v3、独立管理员认证、账户改名/头像/会话/停用启用、邀请码全生命周期、`/admin`页面及独立Compose已实现；定向单元/API 6文件34例和15-admin双浏览器各3例通过，最终完整镜像门禁及5174替换尚待执行。原文字版交付证据仍见frontend-v2-release.json；真实语音、公网部署和正式数据脱敏/迁移仍不在本次范围。
+
+## 2026-09-19：账户与邀请码管理扩展
+
+- 管理员密码仅从环境读取，16～256字符且拒绝示例占位值；独立两小时内存会话、HttpOnly/Strict Cookie、Origin校验及IP限流。管理员Cookie名可配置，5174使用`td_admin_frontend_local`，避免localhost不同端口相互覆盖。
+- 账户库从schema2迁移到3：新增disabled_at、邀请created_at/revoked_at及不含秘密的admin_actions。旧账号、会话、头像和邀请迁移测试通过；token/password/session原文或哈希均不进入管理DTO。
+- “移除”实现为停用并可恢复。大厅成员释放并按既有在线规则继任；playing/review保留offline席位。改名在活跃对局拒绝，清头像沿用延迟回收，注销会话和停用立即撤销旧设备授权。
+- 注册邀请支持5分钟至30天、自定义/编辑到期、撤销、重新生成；重置码绑定账号且默认30分钟。原文仅创建响应/弹窗显示一次，未知响应用相同requestId/body重放。
+- 定向后端最终6文件34例通过；15-admin Chromium3/3（5.0秒）、WebKit3/3（10.5秒），唯一报告results-admin-{chromium,webkit}-final.json。测试发现并修复含下划线账号搜索的SQL转义缺陷；旧失败报告保留。
+- 浏览器验收使用独立named volumes和固定测试密码，项目已停止且不接触5174卷。管理页面视觉截图复验进行中；完整候选镜像门禁尚未执行，不能用上述增量结果替代最终产物验收。
 
 ## 里程碑
 

@@ -19,7 +19,7 @@ export interface RoomMemberDTO extends Profile {
   isHost: boolean;
 }
 export interface Permission { allowed: boolean; reason: string | null }
-export type ControlReason = 'kicked' | 'dissolved' | 'taken_over' | 'session_expired' | 'host_changed' | 'review_ended' | 'left' | 'screen_revoked';
+export type ControlReason = 'kicked' | 'dissolved' | 'taken_over' | 'session_expired' | 'account_disabled' | 'host_changed' | 'review_ended' | 'left' | 'screen_revoked';
 export interface ControlNotice { roomId: string; gameId: string | null; reason: ControlReason }
 export interface RequestIntent { requestId: string }
 export interface MatchIntent extends RequestIntent { gameId: string }

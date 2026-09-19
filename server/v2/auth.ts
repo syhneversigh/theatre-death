@@ -53,6 +53,7 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     if (!limits.allow(`login-ip:${req.ip}`, 30, 60_000) || !limits.allow(`login-user:${username}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
     const account = store.byName(username);
     if (!await verifyPassword(password, account?.passwordHash ?? null) || !account) throw new ApiError(401, 'invalid_credentials');
+    if (account.disabledAt !== null) throw new ApiError(403, 'account_disabled');
     loginResponse(res, account);
   });
   router.get('/me', (req, res) => {
