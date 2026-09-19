@@ -14,7 +14,7 @@ function smokeBaseURL(): { value: string; origin: string } {
   const value = process.env.FRONTEND_BASE_URL;
   if (!value) throw new Error('release smoke requires FRONTEND_BASE_URL');
   const parsed = new URL(value);
-  if (parsed.protocol !== 'http:' || parsed.hostname !== 'app' || parsed.port !== '3000' || parsed.pathname !== '/') throw new Error(`release smoke requires http://app:3000, got ${value}`);
+  if (parsed.protocol !== 'http:' || parsed.hostname !== 'theater-smoke' || parsed.port !== '3000' || parsed.pathname !== '/') throw new Error(`release smoke requires http://theater-smoke:3000, got ${value}`);
   return { value: value.replace(/\/$/, ''), origin: parsed.origin };
 }
 
@@ -169,6 +169,7 @@ test('release smoke：candidate同源静态产物、注册头像与真实五人S
     await page.getByRole('button', { name: '开始游戏', exact: true }).click();
     expect((await startRequest).postDataJSON().requestId).toMatch(UUID_V4);
     await expect(page.getByRole('heading', { name: '夜幕降临' })).toBeVisible({ timeout: 30_000 });
+    await page.screenshot({ path: `/results/release-stage-${testInfo.project.name}.png` });
 
     const forbidden = requestedUrls.filter(url => /\/(?:@vite|@fs)\/|\/(?:src|source)\/|game-test|\.tsx(?:\?|$)|\.ts(?:\?|$)/i.test(new URL(url).pathname));
     expect(forbidden).toEqual([]);

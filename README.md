@@ -1,5 +1,7 @@
 # 剧院死神（Theater Death）
 
+新版前端（契约2.1 / 规则2.0）的完整本地交付已验收，使用独立入口 `http://localhost:5174`。构建、启动及邀请码维护见 [新版交接说明](docs/frontend-v2-handoff.md)，验证结果见 [前端验收台账](docs/frontend-v2-acceptance.md)。下文保留旧版部署说明；新版不需要切换旧服务或迁移正式数据。
+
 13 人 9 身份的社交推理游戏**在线法官**：服务端持有真实状态并做全部裁决，纯规则引擎 + Socket.IO 实时推送 + 网页前端；支持「玩家电脑 / 第三方服务器」两种托管（同一 Docker 镜像）。
 
 - 玩法权威：`theater_death_rulebook_v1.1.md`（含 S3 裁定）

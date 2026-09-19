@@ -6,12 +6,15 @@ services:
     image: theater-death-frontend-v2:local
     environment:
       NODE_ENV: development
-      PUBLIC_BASE_URL: http://app:3000
+      PUBLIC_BASE_URL: http://theater-smoke:3000
       ACCOUNT_COOKIE_NAME: td_account_frontend_smoke
       DATA_DIR: /app/data-frontend-v2
       VOICE_ENABLED: 'false'
     volumes:
       - frontend-smoke-data:/app/data-frontend-v2
+    networks:
+      default:
+        aliases: [theater-smoke]
     healthcheck:
       test: [CMD, node, -e, 'fetch("http://localhost:3000/healthz").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))']
       interval: 5s
@@ -29,7 +32,7 @@ services:
     image: theater-death-frontend-e2e:pw1630-ts
     profiles: [smoke]
     environment:
-      FRONTEND_BASE_URL: http://app:3000
+      FRONTEND_BASE_URL: http://theater-smoke:3000
     command: [npx, playwright, test, --config=playwright.v2.config.ts, specs-v2/13-release-smoke.spec.ts]
     volumes:
       - ../e2e/specs-v2:/e2e/specs-v2:ro

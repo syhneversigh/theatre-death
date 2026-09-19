@@ -1,6 +1,6 @@
 # 新版前端本地交付与接续
 
-状态：准备中，尚未完成最终候选构建和同源浏览器验收。本文命令是交付操作说明，不是已执行证明；实际结果以 frontend-v2-acceptance.md 为准。
+状态：文字版完整前后端本地交付已验收。根/前端类型检查、79文件504项单元/API测试通过；实际镜像的Chromium和WebKit同源联验各1/1通过。本地localhost:5174已启动且健康，使用独立新数据卷。详细证据见 frontend-v2-acceptance.md，镜像与文件哈希见 frontend-v2-release.json。
 
 ## 入口与边界
 
@@ -38,11 +38,11 @@ docker compose -f deploy/compose.frontend-local.yml ps
 
 ```powershell
 docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts invite
-docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts reset-password <username>
-docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts revoke-invite <id>
+docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts reset-password 'player_name'
+docker compose -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts revoke-invite 'invitation_id'
 ```
 
-这些命令输出的一次性码应私下交给对应玩家，不放入截图、Git或验收报告。密码重置码由维护者签发，页面不提供邮件找回。
+将player_name和invitation_id替换为实际账号与邀请码ID。这些命令输出的一次性码应私下交给对应玩家，不放入截图、Git或验收报告。密码重置码由维护者签发，页面不提供邮件找回。
 
 ## 停止与数据
 
@@ -52,8 +52,10 @@ docker compose -f deploy/compose.frontend-local.yml down
 
 该命令保留命名数据卷；不要加-v，除非明确要删除此环境全部账号、头像和审计数据。当前版本不承诺服务器重启恢复正在进行的对局。生产迁移、脱敏和公网入口切换由用户后续另行安排。
 
-## 未完成交付证据
+## 验收证据与后续边界
 
-尚需补齐F09需求映射、最终候选镜像ID与源码提交、全量构建门禁结果，以及真实同源认证/头像/Socket/静态资源浏览器验证。暂不将本文作为项目完工声明。
+镜像产品源码提交为a9ad5a6d9652b08a092f0f2d3d09cee608c0d414，镜像摘要为sha256:bd10f62c15215a22f43d09afa31a992a965095aa0107a4ae3142b7a53e46fc60。构建日志为test-results-frontend-v2/build-f10.log。后续提交只整理测试环境域名、截图和交付文档，不改变该镜像的产品代码。
 
-最终产物的隔离验证编排为deploy/compose.frontend-smoke.yml：不开放宿主端口，使用另一个独立数据卷，浏览器通过http://app:3000访问实际候选。该环境用于验证非localhost HTTP下的请求ID兼容，不在本地交付卷中生成验收账号；测试脚本和最终结果仍待补齐。
+最终产物的隔离验证编排为deploy/compose.frontend-smoke.yml：不开放宿主端口，使用另一个独立数据卷，浏览器通过http://theater-smoke:3000访问实际候选。13-release-smoke.spec.ts验证非localhost HTTP请求ID兼容、实际静态资源/源码404、注册登录/头像/Socket以及真实五人开局；报告results-f10-release-{chromium,webkit}.json分别1/1通过。使用theater-smoke别名，避免裸app域名被浏览器自动升级HTTPS。测试项目已停止，测试账号未写入本地交付卷。
+
+18类行动与正式13人首局复盘/第二局启动分别由09和11真实链验证；账户异常、草稿、跨账号、房间治理、重连、响应式与键盘验证见验收台账。手机软键盘采用浏览器等效视口验证，没有冒充物理手机实测。真实媒体语音、正式数据脱敏/迁移、公网部署及原服务入口切换仍由用户后续安排；当前没有文本版交付阻塞项。
