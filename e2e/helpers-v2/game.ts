@@ -8,7 +8,7 @@ export interface GameHarnessFixture { view: RoomSnapshot; catalog: CatalogDTO; o
 export interface ReviewEnvelope {
   review: {
     gameId: string; winner: 'human' | 'death_faction'; reason: string; endedAtDay: number;
-    players: Array<{ playerId: string; seat: number; roleId: string; life: 'alive' | 'dead'; revealed: boolean; username: string; avatarUrl: string | null }>;
+    players: Array<{ playerId: string; seat: number; roleId: string; life: 'alive' | 'dead'; revealed: boolean; nickname: string; uid: string; avatarUrl: string | null }>;
     timeline: Array<{ dayNumber: number; stage: 1 | 2; type: string; payload: JsonValue }>;
     chat: { public: Array<{ id: number; messageId?: string; senderId: string; senderSeat: number | null; text: string; at: number }>; faction: Array<{ id: number; messageId?: string; senderId: string; senderSeat: number | null; text: string; at: number }> };
     startedAt: number; endedAt: number; durationMs: number;
@@ -88,12 +88,12 @@ export function resizeSeats(view: RoomSnapshot, count: number): RoomSnapshot {
   const source = next.public!.seats;
   next.public!.seats = Array.from({ length: count }, (_, index) => {
     const base = source[index % source.length]!;
-    return { ...base, playerId: 'fixture-player-' + (index + 1), seat: index + 1, username: '座位' + (index + 1), memberId: 'fixture-member-' + (index + 1) };
+    return { ...base, playerId: 'fixture-player-' + (index + 1), seat: index + 1, nickname: '座位' + (index + 1), uid: String(10000001 + index), memberId: 'fixture-member-' + (index + 1) };
   });
   next.room.requiredPlayers = count;
-  next.room.formalMembers = next.room.formalMembers.map((member, index) => ({ ...member, userId: 'fixture-user-' + (index + 1), memberId: 'fixture-member-' + (index + 1), playerId: next.public!.seats[index % count]!.playerId, username: '座位' + (index + 1) }));
+  next.room.formalMembers = next.room.formalMembers.map((member, index) => ({ ...member, userId: 'fixture-user-' + (index + 1), uid: String(10000001 + index), memberId: 'fixture-member-' + (index + 1), playerId: next.public!.seats[index % count]!.playerId, nickname: '座位' + (index + 1) }));
   const publicGame = next.public!;
   next.viewer.subjectPlayerId = publicGame.seats[0]?.playerId ?? null;
-  if (publicGame.seats[0]) { next.viewer.userId = 'fixture-user-1'; next.viewer.memberId = 'fixture-member-1'; if (next.private) { next.private.self.playerId = publicGame.seats[0].playerId; next.private.self.seat = 1; next.private.self.username = publicGame.seats[0].username; } }
+  if (publicGame.seats[0]) { next.viewer.userId = 'fixture-user-1'; next.viewer.memberId = 'fixture-member-1'; if (next.private) { next.private.self.playerId = publicGame.seats[0].playerId; next.private.self.seat = 1; next.private.self.nickname = publicGame.seats[0].nickname; } }
   return next;
 }

@@ -5,7 +5,7 @@ export interface ApiSession { api: APIRequestContext; account: RoomAccount }
 
 export async function loginApi(account: RoomAccount): Promise<ApiSession> {
   const api = await request.newContext({ baseURL: 'http://localhost:5173', extraHTTPHeaders: { Origin: 'http://localhost:5173' } });
-  const response = await api.post('/api/v2/auth/login', { data: { username: account.username, password: account.password } });
+  const response = await api.post('/api/v2/auth/login', { data: { uid: account.uid, password: account.password } });
   expect(response.status()).toBe(200);
   return { api, account };
 }
@@ -24,8 +24,8 @@ export async function roomView(session: ApiSession, code: string): Promise<any> 
 }
 
 export async function enterAndReady(session: ApiSession, code: string): Promise<void> {
-  await roomPost(session, `/api/v2/rooms/${code}/enter`, { requestId: `recovery-enter-${session.account.username}-${Date.now()}` });
-  await roomPost(session, `/api/v2/rooms/${code}/ready`, { requestId: `recovery-ready-${session.account.username}-${Date.now()}`, ready: true });
+  await roomPost(session, `/api/v2/rooms/${code}/enter`, { requestId: `recovery-enter-${session.account.uid}-${Date.now()}` });
+  await roomPost(session, `/api/v2/rooms/${code}/ready`, { requestId: `recovery-ready-${session.account.uid}-${Date.now()}`, ready: true });
 }
 
 export async function browserContextForApi(browser: Browser, session: ApiSession): Promise<BrowserContext> {

@@ -124,6 +124,29 @@ describe('v2 operation receipt HTTP contract', () => {
     expect(await json(dissolveReplay)).toEqual(dissolveBody);
   });
 
+  it('immediately disposes an empty reviewed room after the last formal leave and replays its response', async () => {
+    const h = await makeHarness(14);
+    const { room } = await startFullRoom(h);
+    const spectator = h.users[13]!;
+    expect((await enter(h, room.roomCode, spectator, 'review-dispose-spectator')).response.status).toBe(200);
+    const stable = h.app.directory.byId.get(room.roomId)!;
+    stable.runtime!.state = { ...stable.runtime!.state!, phase: 'ended', win: { winner: 'human', dayNumber: 1, reason: 'review_dispose' } };
+    for (let index = 1; index < 13; index += 1) {
+      const response = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: `review-dispose-leave-${index}` }), h.users[index]);
+      expect(response.status).toBe(200);
+    }
+    const finalLeave = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: 'review-dispose-final' }), h.users[0]);
+    expect(finalLeave.status).toBe(200);
+    const finalBody = await json(finalLeave);
+    expect(finalBody).toEqual({ left: true, seatRetained: false });
+    expect((await request(h, '/api/v2/auth/me', {}, h.users[0])).status).toBe(200);
+    expect((await request(h, `/api/v2/rooms/${room.roomCode}/view`, {}, spectator)).status).toBe(404);
+    expect((await json(await request(h, '/api/v2/me/rooms', {}, spectator))).currentRoomId).toBeNull();
+    const replay = await request(h, `/api/v2/rooms/${room.roomCode}/leave`, post({ requestId: 'review-dispose-final' }), h.users[0]);
+    expect(replay.status).toBe(200);
+    expect(await json(replay)).toEqual(finalBody);
+  });
+
   it('does not replay an invitation to an old controller, while a valid takeover gets the original token and expiry', async () => {
     const h = await makeHarness();
     const { room, gameId } = await startFullRoom(h);

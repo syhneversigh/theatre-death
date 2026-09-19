@@ -14,7 +14,7 @@ export interface MyRooms { currentRoomId: string | null; rooms: MyRoom[] }
 export interface Review {
   gameId: string; winner: 'human' | 'death_faction'; reason: string; endedAtDay: number;
   startedAt: number; endedAt: number; durationMs: number;
-  players: { playerId: string; seat: number; username: string; avatarUrl: string | null; roleId: RoleId; life: 'alive' | 'dead'; revealed: boolean }[];
+  players: { playerId: string; uid: string; seat: number; nickname: string; avatarUrl: string | null; roleId: RoleId; life: 'alive' | 'dead'; revealed: boolean }[];
   timeline: { dayNumber: number; stage: 1 | 2; type: string; payload: unknown }[];
   chat: Record<'public' | 'faction', { id: number; senderId: string; senderSeat: number | null; text: string; at: number; messageId: string }[]>;
 }

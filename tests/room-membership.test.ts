@@ -27,7 +27,8 @@ function setup() {
 }
 
 function account(accounts: AccountStore, name: string): { userId: string; session: AccountSession } {
-  const row = accounts.register(name, 'hash', accounts.invite().token);
+  const nickname = name.replace(/\d/g, digit => String.fromCharCode(97 + Number(digit)));
+  const row = accounts.register(`membership-${name}`, nickname, 'hash').account;
   const created = accounts.createSession(row.id);
   return { userId: row.id, session: created.session };
 }

@@ -4,30 +4,33 @@ import { hashPassword, validatePassword, verifyPassword, PasswordWorkQueue } fro
 
 describe('v2 password hashing and work queue', () => {
   it('hashes valid passwords with scrypt and verifies correct and incorrect values', async () => {
-    const stored = await hashPassword('correct horse battery staple');
+    const stored = await hashPassword('correct8888');
     const parsed = JSON.parse(stored) as { algorithm: string; N: number; r: number; p: number; salt: string; hash: string };
     expect(parsed).toMatchObject({ algorithm: 'scrypt', N: 2 ** 17, r: 8, p: 1 });
     expect(parsed.salt).toMatch(/^[0-9a-f]{32}$/);
     expect(parsed.hash).toMatch(/^[0-9a-f]{128}$/);
-    await expect(verifyPassword('correct horse battery staple', stored)).resolves.toBe(true);
-    await expect(verifyPassword('incorrect horse battery staple', stored)).resolves.toBe(false);
+    await expect(verifyPassword('correct8888', stored)).resolves.toBe(true);
+    await expect(verifyPassword('wrong88888', stored)).resolves.toBe(false);
   });
 
   it('uses a random salt for each hash', async () => {
-    const first = JSON.parse(await hashPassword('same password value')) as { salt: string; hash: string };
-    const second = JSON.parse(await hashPassword('same password value')) as { salt: string; hash: string };
+    const first = JSON.parse(await hashPassword('samepass88')) as { salt: string; hash: string };
+    const second = JSON.parse(await hashPassword('samepass88')) as { salt: string; hash: string };
     expect(first.salt).not.toBe(second.salt);
     expect(first.hash).not.toBe(second.hash);
-    await expect(verifyPassword('same password value', JSON.stringify(first))).resolves.toBe(true);
-    await expect(verifyPassword('same password value', JSON.stringify(second))).resolves.toBe(true);
+    await expect(verifyPassword('samepass88', JSON.stringify(first))).resolves.toBe(true);
+    await expect(verifyPassword('samepass88', JSON.stringify(second))).resolves.toBe(true);
   });
 
-  it('rejects passwords outside the 12 to 128 character range', async () => {
-    expect(() => validatePassword('short')).toThrowError(ApiError);
-    expect(() => validatePassword('x'.repeat(129))).toThrowError(ApiError);
+  it('accepts exactly 8 to 16 characters and rejects values outside that range', async () => {
+    expect(() => validatePassword('x'.repeat(7))).toThrowError(ApiError);
+    expect(() => validatePassword('x'.repeat(17))).toThrowError(ApiError);
     expect(() => validatePassword(null)).toThrowError(ApiError);
-    await expect(hashPassword('x'.repeat(11))).rejects.toMatchObject({ status: 400, code: 'password_length' });
-    await expect(verifyPassword('x'.repeat(129), null)).resolves.toBe(false);
+    expect(() => validatePassword('x'.repeat(8))).not.toThrow();
+    expect(() => validatePassword('x'.repeat(16))).not.toThrow();
+    await expect(hashPassword('x'.repeat(7))).rejects.toMatchObject({ status: 400, code: 'password_length' });
+    await expect(hashPassword('x'.repeat(8))).resolves.toBeTypeOf('string');
+    await expect(verifyPassword('x'.repeat(17), null)).resolves.toBe(false);
   });
 
   it('limits work to two active tasks and releases a slot after failure', async () => {

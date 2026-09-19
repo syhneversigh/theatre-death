@@ -32,7 +32,7 @@ function fixture() {
   stores.push(store);
   const host: RoomMember = { playerId: 'p_1', nickname: '玩家1', ready: true, joinedAt: clock.now() };
   const room = new Room('MEDIA01', 'g_media', host, THEATER_DEATH_13_V2);
-  const account = store.register('media_user', 'dummy-hash', store.invite().token);
+  const account = store.register('media-user', 'mediauser', 'dummy-hash').account;
   const first = store.createSession(account.id).session;
   const access = new RoomAccess(room, store, () => clock.now(), () => undefined);
   access.bind('p_1', first);
@@ -66,7 +66,7 @@ function mockVoice(options: { issue?: () => Promise<VoiceCredentials>; sync?: ()
 describe('V2Media 授权与媒体副作用', () => {
   it('permissions 由 gameView 当前发言者权限计算，observer 永远不可发布', () => {
     const f = fixture();
-    const observer = f.store.register('media_observer', 'dummy-hash', f.store.invite().token);
+  const observer = f.store.register('media-observer', 'mediaobserver', 'dummy-hash').account;
     const watcher = f.store.createSession(observer.id).session;
     f.access.watch(watcher);
     const permissions = f.media.permissions(f.access);

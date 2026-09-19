@@ -20,6 +20,14 @@ export class EmptyRooms {
     if (room.dissolved || room.formalMembers().length > 0) {
       this.cancel(room); room.emptyDeadline = null; return;
     }
+    // A completed match needs no reconnect grace once every formal member left.
+    // Observers cannot retain a finished room; offline formal members still can.
+    if (room.phase === 'review') {
+      this.cancel(room); room.emptyDeadline = null;
+      room.recordCompletion();
+      this.governance.dispose(room);
+      return;
+    }
     if (room.emptyDeadline !== null) return; // spectators cannot extend an empty interval
     const deadline = this.directory.deps.clock.now() + EMPTY_ROOM_TTL_MS;
     room.emptyDeadline = deadline;

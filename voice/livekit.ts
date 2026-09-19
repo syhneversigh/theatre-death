@@ -1,12 +1,8 @@
-import { AccessToken, RoomServiceClient, type ParticipantInfo } from 'livekit-server-sdk';
+import { AccessToken, RoomServiceClient, TrackSource, type ParticipantInfo } from 'livekit-server-sdk';
+import type { VoiceCredentials } from '../contracts/v2.ts';
+export type { VoiceCredentials } from '../contracts/v2.ts';
 
 /** 浏览器端加入语音所需的短期凭证（发布权由服务端动态授予，token 本身不含发布权） */
-export interface VoiceCredentials {
-  readonly url: string;
-  readonly token: string;
-  readonly roomName: string;
-}
-
 export interface VoiceService {
   /** 当前房间的期望发布许可（经服务端策略计算，按 playerId） */
   issueCredentials(input: { roomName: string; playerId: string }): Promise<VoiceCredentials>;
@@ -27,7 +23,7 @@ type RoomClient = {
     room: string,
     identity: string,
     options: {
-      permission?: { canPublish?: boolean; canSubscribe?: boolean; canPublishData?: boolean };
+      permission?: { canPublish?: boolean; canSubscribe?: boolean; canPublishData?: boolean; canPublishSources?: TrackSource[] };
     },
   ): Promise<unknown>;
   removeParticipant(room: string, identity: string): Promise<unknown>;
@@ -76,6 +72,7 @@ export function createLiveKitVoiceService(options: LiveKitVoiceOptions): VoiceSe
         room: roomName,
         canSubscribe: true,
         canPublish: false,
+        canPublishSources: [TrackSource.MICROPHONE],
         canPublishData: false,
       });
       return { url: options.publicUrl, token: await token.toJwt(), roomName };
@@ -102,7 +99,7 @@ export function createLiveKitVoiceService(options: LiveKitVoiceOptions): VoiceSe
           continue;
         }
         await roomClient.updateParticipant(roomName, participant.identity, {
-          permission: { canPublish: desired, canSubscribe: true, canPublishData: false },
+          permission: { canPublish: desired, canSubscribe: true, canPublishData: false, canPublishSources: [TrackSource.MICROPHONE] },
         });
       }
     },

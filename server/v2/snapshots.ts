@@ -117,13 +117,14 @@ export class RoomSnapshots {
         seats: known.players.map<SeatDTO>((p) => {
           const participant = participantById.get(p.playerId)!;
           const current = room.members.get(participant.userId);
-          return { ...this.deps.profile(participant.userId), playerId: p.playerId, memberId: current?.memberId ?? null, seat: p.seat, alive: p.life !== 'dead', revealedRoleId: p.revealed ? p.roleId : null, presence: current?.presence ?? 'left', isHost: current?.memberId === room.hostMemberId };
+          const profile = this.deps.directory.deps.accounts.profileOrNull(participant.userId);
+          return { userId: participant.userId, uid: participant.uid, nickname: participant.nickname, avatarUrl: profile?.avatarUrl ?? null, profileVersion: profile?.profileVersion ?? 0, playerId: p.playerId, memberId: current?.memberId ?? null, seat: p.seat, alive: p.life !== 'dead', revealedRoleId: p.revealed ? p.roleId : null, presence: current?.presence ?? 'left', isHost: current?.memberId === room.hostMemberId };
         }).sort((a, b) => a.seat - b.seat),
         events: events(projected.public.events ?? []), day: dayView(known), result: known.win,
         startedAt: room.matchStartedAt!, endedAt: room.matchEndedAt,
       } : null,
       private: privateView ? {
-        self: { playerId: privateView.self.playerId, seat: privateView.self.seat, username: privateView.self.nickname, roleId: privateView.self.roleId, life: privateView.self.life, revealed: privateView.self.revealed, voteFrozen: privateView.self.voteFrozen, abilities: privateView.self.abilities, guardHistory: privateView.self.guardHistory },
+        self: { playerId: privateView.self.playerId, seat: privateView.self.seat, nickname: privateView.self.nickname, roleId: privateView.self.roleId, life: privateView.self.life, revealed: privateView.self.revealed, voteFrozen: privateView.self.voteFrozen, abilities: privateView.self.abilities, guardHistory: privateView.self.guardHistory },
         events: events(privateView.events), targets: privateView.targets, proposal: privateView.proposal,
         factionRoom: privateView.factionRoom ? { ...privateView.factionRoom, readOnly: readOnly || privateView.factionRoom.readOnly, canWrite: !readOnly && privateView.factionRoom.canWrite } : null,
       } : null,

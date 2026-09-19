@@ -110,7 +110,7 @@ describe('v2 room member policy', () => {
     view.viewer.isHost = false;
     const formalTarget = at(view.room.formalMembers, 1);
     view.room.formalMembers[1] = { ...formalTarget, presence: 'offline' };
-    const spectator: RoomMemberDTO = { ...formalTarget, userId: 'spectator-user', username: '观众', memberId: 'spectator-member', kind: 'public_spectator', playerId: null, ready: null, presence: 'online', isHost: false };
+    const spectator: RoomMemberDTO = { ...formalTarget, userId: 'spectator-user', uid: '10000020', nickname: '观众', memberId: 'spectator-member', kind: 'public_spectator', playerId: null, ready: null, presence: 'online', isHost: false };
     view.room.spectators = [spectator];
 
     setRoomPermission(view, 'kickFormal', permission(true));
@@ -126,9 +126,9 @@ describe('v2 room member policy', () => {
 
   it('labels self and host identity without inferring management permission', () => {
     const self = at(lobby.room.formalMembers, 0);
-    const otherHost: RoomMemberDTO = { ...self, userId: 'other-host-user', memberId: 'other-host-member', username: '房主二号', isHost: true };
-    const ordinary: RoomMemberDTO = { ...self, userId: 'ordinary-user', memberId: 'ordinary-member', username: '普通玩家', isHost: false };
-    expect(memberLabel(self, lobby.viewer.userId)).toBe('http_user_1（你） · 房主');
+    const otherHost: RoomMemberDTO = { ...self, userId: 'other-host-user', uid: '10000021', memberId: 'other-host-member', nickname: '房主二号', isHost: true };
+    const ordinary: RoomMemberDTO = { ...self, userId: 'ordinary-user', uid: '10000022', memberId: 'ordinary-member', nickname: '普通玩家', isHost: false };
+    expect(memberLabel(self, lobby.viewer.userId)).toBe('httpusera（你） · 房主');
     expect(memberLabel(otherHost, lobby.viewer.userId)).toBe('房主二号 · 房主');
     expect(memberLabel(ordinary, lobby.viewer.userId)).toBe('普通玩家');
   });

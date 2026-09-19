@@ -53,7 +53,7 @@ async function cleanupGame(game: GameSetup): Promise<void> {
   try {
   for (const session of game.sessions) {
     if (game.spiritLoggedOut && session === game.spirit) continue;
-    await roomPost(session, `/api/v2/rooms/${game.code}/leave`, { requestId: `recovery-clean-${session.account.username}-${Date.now()}` });
+    await roomPost(session, `/api/v2/rooms/${game.code}/leave`, { requestId: `recovery-clean-${session.account.uid}-${Date.now()}` });
   }
   if (game.spiritLoggedOut) expect((await game.spirit.api.get('/api/v2/auth/me')).status()).toBe(401);
   if (!(game.spiritIsHost && game.spiritLoggedOut) && !game.hostPage.isClosed()) await leaveRoom(game.hostPage);

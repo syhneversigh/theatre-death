@@ -71,10 +71,10 @@ describe('contract client example helpers', () => {
   });
 
   it('acceptProfile keeps only the active account and non-decreasing profile version', () => {
-    const old: Profile = { userId: 'u1', username: 'old', avatarUrl: null, profileVersion: 2 };
-    const stale: Profile = { ...old, username: 'stale', profileVersion: 1 };
-    const fresh: Profile = { ...old, username: 'fresh', profileVersion: 3 };
-    const other: Profile = { userId: 'u2', username: 'other', avatarUrl: null, profileVersion: 99 };
+    const old: Profile = { userId: 'u1', uid: '10000001', nickname: 'old', avatarUrl: null, profileVersion: 2 };
+    const stale: Profile = { ...old, nickname: 'stale', profileVersion: 1 };
+    const fresh: Profile = { ...old, nickname: 'fresh', profileVersion: 3 };
+    const other: Profile = { userId: 'u2', uid: '10000002', nickname: 'other', avatarUrl: null, profileVersion: 99 };
     expect(acceptProfile(old, stale, 'u1')).toEqual(old);
     expect(acceptProfile(old, fresh, 'u1')).toEqual(fresh);
     expect(acceptProfile(old, other, 'u1')).toEqual(old);

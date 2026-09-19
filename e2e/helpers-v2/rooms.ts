@@ -10,7 +10,7 @@ export function loadRoomAccounts(projectName: string): RoomAccount[] {
 export async function loginRoomAccount(page: Page, account: RoomAccount): Promise<void> {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '欢迎入席' })).toBeVisible();
-  await page.getByLabel('账号').fill(account.username);
+  await page.getByLabel('UID').fill(account.uid);
   await page.getByLabel('登录密码').fill(account.password);
   await page.getByRole('button', { name: /进入剧院/ }).click();
   await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
@@ -49,13 +49,13 @@ export async function leaveRoom(page: Page): Promise<void> {
     const close = dialog.getByRole('button', { name: '关闭' });
     if (await close.isVisible().catch(() => false)) await close.click();
   }
-  let leave = page.getByRole('button', { name: '离开房间', exact: true });
+  let leave = page.getByRole('button', { name: /^(离开房间|暂离对局)$/, exact: true });
   if (!(await leave.isVisible().catch(() => false))) {
     const manage = page.getByRole('button', { name: '房间管理', exact: true });
     if (await manage.isVisible().catch(() => false)) {
       await manage.click();
-      await expect(page.getByRole('button', { name: '离开房间', exact: true })).toBeVisible();
-      leave = page.getByRole('button', { name: '离开房间', exact: true });
+      await expect(page.getByRole('button', { name: /^(离开房间|暂离对局)$/, exact: true })).toBeVisible();
+      leave = page.getByRole('button', { name: /^(离开房间|暂离对局)$/, exact: true });
     } else {
       const rooms = await myRooms(page);
       expect(rooms.currentRoomId).toBeNull();
@@ -63,7 +63,8 @@ export async function leaveRoom(page: Page): Promise<void> {
     }
   }
   await leave.click();
-  await confirmModal(page, '离开房间？');
+  await expect(page.getByRole('dialog').getByRole('heading')).toHaveText(/^(离开房间|暂离对局)？$/);
+  await page.getByRole('dialog').getByRole('button', { name: '确认操作' }).click();
   await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
 }
 

@@ -33,8 +33,8 @@ describe('v2 client bootstrap and catalog contract', () => {
     expect(catalogResponse.status).toBe(200);
     const bootstrap = await json(bootstrapResponse);
     const catalog = await json(catalogResponse);
-    expect(bootstrap).toMatchObject({ contractVersion: '2.1', rulesVersion: '2.0' });
-    expect(bootstrap.auth).toMatchObject({ registration: 'invitation', username: { minLength: 3, maxLength: 32, pattern: '^[A-Za-z0-9_]{3,32}$' }, password: { minLength: 12, maxLength: 128 }, sessionMaxAgeSeconds: 604800 });
+    expect(bootstrap).toMatchObject({ contractVersion: '2.2', rulesVersion: '2.0' });
+    expect(bootstrap.auth).toMatchObject({ registration: 'open', nickname: { minLength: 2, maxLength: 32 }, password: { minLength: 8, maxLength: 16 }, sessionMaxAgeSeconds: 604800 });
     expect(bootstrap.features).toMatchObject({ voice: false, avatars: false, customBoards: true, secondScreens: true, persistentAccounts: true, gameRecovery: false });
     expect(bootstrap.socket).toEqual({ path: '/api/v2/socket.io', pingIntervalMs: HEARTBEAT_INTERVAL_MS, pingTimeoutMs: HEARTBEAT_TIMEOUT_MS, disconnectGraceMs: DISCONNECT_GRACE_MS });
     expect(catalog.rulesVersion).toBe('2.0');

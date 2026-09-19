@@ -72,10 +72,10 @@ export class RoomDirectory {
     });
   }
   private addMember(room: StableRoom, session: AccountSession, kind: ActiveMember['kind']): ActiveMember {
-    const row = this.deps.accounts.db.prepare('SELECT username FROM accounts WHERE id=?').get(session.userId);
+    const row = this.deps.accounts.db.prepare('SELECT uid,nickname FROM accounts WHERE id=?').get(session.userId);
     if (!row) throw new ApiError(401, 'unauthorized');
     const member: ActiveMember = {
-      memberId: newId('m'), userId: session.userId, username: String(row.username), kind,
+      memberId: newId('m'), userId: session.userId, uid: String(row.uid), nickname: String(row.nickname), kind,
       joinedAt: this.deps.clock.now(), joinedOrder: room.nextJoinOrder++, ready: false,
       sessionId: session.id, epoch: newId('e'), presence: 'offline', connections: new Set(), disconnectAt: null,
     };
@@ -160,6 +160,6 @@ export class RoomDirectory {
       const member = this.member(room, session);
       this.removeMember(room, member, 'left');
       return { left: true, seatRetained: room.participants.has(session.userId) };
-    });
+    }).then(result => ({ left: true, seatRetained: !room.dissolved && result.seatRetained }));
   }
 }

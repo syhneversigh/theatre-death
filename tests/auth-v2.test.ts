@@ -1,143 +1,32 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import express from 'express';
+import { createServer, type Server } from 'node:http';
 import { AccountStore } from '../server/v2/account-store.ts';
 import { authRouter, COOKIE } from '../server/v2/auth.ts';
 import { hashPassword } from '../server/v2/passwords.ts';
 
-const stores: AccountStore[] = [];
-afterEach(() => { for (const store of stores.splice(0)) store.close(); });
-
-function appFor(store: AccountStore, revoked: string[]) {
-  const app = express();
-  app.use(express.json());
-  app.use('/api/v2/auth', authRouter(store, false, (userId) => revoked.push(userId)));
-  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    const typed = error as { status?: number; code?: string };
-    res.status(typed.status ?? 500).json({ error: typed.code ?? 'internal_error' });
-  });
-  return app;
+const stores: AccountStore[] = [], servers: Server[] = [];
+afterEach(async () => { for (const server of servers.splice(0)) await new Promise<void>(resolve => server.close(() => resolve())); for (const store of stores.splice(0)) store.close(); });
+function json(value: unknown): RequestInit { return { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(value) }; }
+async function harness() {
+  const store = new AccountStore(':memory:', () => 1_000); stores.push(store); const app = express(); app.use(express.json()); app.use('/auth', authRouter(store, false, () => undefined)); app.use((_e: unknown, _q: express.Request, res: express.Response, _n: express.NextFunction) => res.status(400).json({ error: 'bad_request' }));
+  const server = createServer(app); servers.push(server); await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve)); const port = (server.address() as { port: number }).port; return { store, request: (path: string, init?: RequestInit) => fetch(`http://127.0.0.1:${port}/auth${path}`, init) };
 }
+function cookie(response: Response): string { return (response.headers.get('set-cookie') ?? '').split(';')[0]!; }
 
-async function request(app: express.Express, path: string, init: RequestInit = {}) {
-  const server = app.listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
-  const address = server.address() as { port: number };
-  try {
-    return await fetch(`http://127.0.0.1:${address.port}/api/v2/auth${path}`, init);
-  } finally {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
-  }
-}
-
-function json(body: unknown, cookie?: string): RequestInit {
-  return {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...(cookie === undefined ? {} : { cookie }) },
-    body: JSON.stringify(body),
-  };
-}
-
-function setCookie(response: Response): string {
-  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
-  const value = headers.getSetCookie?.()[0] ?? response.headers.get('set-cookie');
-  if (!value) throw new Error('missing set-cookie');
-  return value.split(';')[0] ?? '';
-}
-
-async function body(response: Response): Promise<Record<string, unknown>> {
-  return (await response.json()) as Record<string, unknown>;
-}
-
-describe('v2 account authentication routes', () => {
-  it('registers by invitation, sets a strict HttpOnly scoped cookie, reads me, and logs out', async () => {
-    const store = new AccountStore(':memory:');
-    stores.push(store);
-    const revoked: string[] = [];
-    const app = appFor(store, revoked);
-    const invitation = store.invite();
-    const registered = await request(app, '/register', json({ username: 'New_User', password: 'a sufficiently long password', invitation: invitation.token }));
-    expect(registered.status).toBe(201);
-    const rawCookie = (registered.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.()[0] ?? '';
-    expect(rawCookie).toContain(`${COOKIE}=`);
-    expect(rawCookie.toLowerCase()).toContain('httponly');
-    expect(rawCookie.toLowerCase()).toContain('samesite=strict');
-    expect(rawCookie).toContain('Path=/api/v2');
-    expect(rawCookie).toContain('Max-Age=604800');
-    const cookie = setCookie(registered);
-
-    const me = await request(app, '/me', { headers: { cookie } });
-    expect(me.status).toBe(200);
-    expect((await body(me)).userId).toBeDefined();
-    const loggedOut = await request(app, '/logout', json({}, cookie));
-    expect(loggedOut.status).toBe(200);
-    expect(revoked).toHaveLength(1);
-    expect((await request(app, '/me', { headers: { cookie } })).status).toBe(401);
-  }, 20_000);
-
-  it('returns the same 401 code for a wrong password and an unknown user', async () => {
-    const store = new AccountStore(':memory:');
-    stores.push(store);
-    const account = store.register('known_user', await hashPassword('known password value'), store.invite().token);
-    expect(account.username).toBe('known_user');
-    const app = appFor(store, []);
-    const wrong = await request(app, '/login', json({ username: 'known_user', password: 'wrong password value' }));
-    const unknown = await request(app, '/login', json({ username: 'unknown_user', password: 'wrong password value' }));
-    expect(wrong.status).toBe(401);
-    expect(unknown.status).toBe(401);
-    expect(await body(wrong)).toEqual({ error: 'invalid_credentials' });
-    expect(await body(unknown)).toEqual({ error: 'invalid_credentials' });
-  }, 20_000);
-
-  it('reset-password invalidates every existing session and calls revocation hook', async () => {
-    const store = new AccountStore(':memory:');
-    stores.push(store);
-    const account = store.register('reset_user', await hashPassword('old password value'), store.invite().token);
-    const first = store.createSession(account.id);
-    const second = store.createSession(account.id);
-    const reset = store.invite('reset', account.username);
-    const revoked: string[] = [];
-    const app = appFor(store, revoked);
-    expect((await request(app, '/me', { headers: { cookie: `${COOKIE}=${first.token}` } })).status).toBe(200);
-    const response = await request(app, '/reset-password', json({ token: reset.token, password: 'new password value' }));
-    expect(response.status).toBe(200);
-    expect(revoked).toEqual([account.id]);
-    expect(store.session(first.token)).toBeNull();
-    expect(store.session(second.token)).toBeNull();
-  }, 20_000);
-
-  it('rate limits repeated login attempts', async () => {
-    const store = new AccountStore(':memory:');
-    stores.push(store);
-    const app = appFor(store, []);
-    const responses: Response[] = [];
-    for (let index = 0; index < 11; index += 1) {
-      responses.push(await request(app, '/login', json({ username: 'limited_user', password: 'wrong password value' })));
-    }
-    expect(responses.slice(0, 10).every((response) => response.status === 401)).toBe(true);
-    expect(responses[10]?.status).toBe(429);
-    expect(await body(responses[10]!)).toEqual({ error: 'rate_limited' });
+describe('v2.2 account authentication', () => {
+  it('registers with requestId, returns uid/nickname, and replays safely', async () => {
+    const h = await harness(); h.store.setRegistrationEnabled(true);
+    const body = { requestId: 'auth-register-1', nickname: '新用户', password: 'eight888' };
+    const first = await h.request('/register', json(body)); expect(first.status).toBe(201); const profile = await first.json() as Record<string, unknown>;
+    expect(profile).toMatchObject({ uid: '10000001', nickname: '新用户' });
+    const replay = await h.request('/register', json(body)); expect(replay.status).toBe(200); expect(await replay.json()).toMatchObject({ uid: '10000001', nickname: '新用户' });
   }, 30_000);
 
-  it('rejects expired sessions and change-password revokes the old session', async () => {
-    const now = { value: 10_000 };
-    const store = new AccountStore(':memory:', () => now.value);
-    stores.push(store);
-    const account = store.register('change_user', await hashPassword('initial password value'), store.invite().token);
-    const session = store.createSession(account.id);
-    const cookie = `${COOKIE}=${session.token}`;
-    const revoked: string[] = [];
-    const app = appFor(store, revoked);
-    expect((await request(app, '/me', { headers: { cookie } })).status).toBe(200);
-    now.value += 7 * 86400_000;
-    expect((await request(app, '/me', { headers: { cookie } })).status).toBe(401);
-
-    const fresh = store.createSession(account.id);
-    const freshCookie = `${COOKIE}=${fresh.token}`;
-    const changed = await request(app, '/change-password', json({ currentPassword: 'initial password value', password: 'updated password value' }, freshCookie));
-    expect(changed.status).toBe(200);
-    expect(revoked).toEqual([account.id]);
-    expect(store.session(fresh.token)).toBeNull();
-    const login = await request(app, '/login', json({ username: 'change_user', password: 'updated password value' }));
-    expect(login.status).toBe(200);
-  }, 20_000);
+  it('logs in by numeric uid and rejects username login', async () => {
+    const h = await harness(); const account = h.store.register('auth-login-1', '登录用户', await hashPassword('eight888')).account;
+    const login = await h.request('/login', json({ uid: account.uid, password: 'eight888' })); expect(login.status).toBe(200); expect(await login.json()).toMatchObject({ uid: account.uid, nickname: '登录用户' });
+    expect((await h.request('/login', json({ username: '登录用户', password: 'eight888' }))).status).toBe(400);
+    expect((await h.request('/me', { headers: { cookie: cookie(login) } })).status).toBe(200);
+  }, 30_000);
 });

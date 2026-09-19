@@ -163,7 +163,7 @@ test('320/390/844/1440视口与5/13/26/64席位无横向溢出，长账号可读
   }
 
   const longAccount = structuredClone(base);
-  longAccount.view.public!.seats[0]!.username = 'A'.repeat(32);
+  longAccount.view.public!.seats[0]!.nickname = 'A'.repeat(32);
   await mounted.setFixture(longAccount);
   const detail = page.getByRole('button', { name: '查看1号玩家信息' });
   await detail.click();

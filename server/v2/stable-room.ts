@@ -15,7 +15,8 @@ export const newId = (prefix: string) => `${prefix}_${randomBytes(16).toString('
 export interface ActiveMember {
   memberId: string;
   userId: string;
-  username: string;
+  uid: string;
+  nickname: string;
   kind: MemberKind;
   joinedAt: number;
   joinedOrder: number;
@@ -26,7 +27,7 @@ export interface ActiveMember {
   connections: Set<string>;
   disconnectAt: number | null;
 }
-export interface Participant { userId: string; memberId: string; playerId: string; username: string }
+export interface Participant { userId: string; uid: string; memberId: string; playerId: string; nickname: string }
 export interface StableRoomDeps {
   clock: Clock;
   accounts: AccountStore;
@@ -83,7 +84,7 @@ export class StableRoom {
     const members = this.formalMembers();
     if (members.length !== this.requiredPlayers()) throw new ApiError(409, 'room_not_full');
     if (members.some((m) => !m.ready)) throw new ApiError(409, 'not_ready');
-    const runtime = this.deps.registry.createMatch(this.code, members.map((m) => ({ nickname: m.username })), this.ruleset, this);
+    const runtime = this.deps.registry.createMatch(this.code, members.map((m) => ({ nickname: m.nickname })), this.ruleset, this);
     this.runtime = runtime;
     this.matchStartedAt = this.deps.clock.now(); this.matchEndedAt = null;
     this.receipts = new ReceiptStore();
@@ -94,7 +95,7 @@ export class StableRoom {
     this.access = access;
     for (let i = 0; i < members.length; i++) {
       const member = members[i]!; const playerId = runtime.members[i]!.playerId;
-      this.participants.set(member.userId, { userId: member.userId, memberId: member.memberId, playerId, username: member.username });
+      this.participants.set(member.userId, { userId: member.userId, uid: member.uid, memberId: member.memberId, playerId, nickname: member.nickname });
       access.seats.set(playerId, { userId: member.userId, sessionId: member.sessionId, epoch: member.epoch });
     }
     for (const member of this.members.values()) if (member.kind !== 'formal' && member.sessionId && this.deps.accounts.sessionActive(member.sessionId)) {

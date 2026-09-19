@@ -9,6 +9,7 @@ import { Lobby } from '../features/room/lobby.tsx';
 import { GameScene } from '../features/game/scene.tsx';
 import { ReviewPage } from '../features/review/page.tsx';
 import { useRoomSession } from '../features/room/session.ts';
+import { VoiceBar } from '../features/voice/bar.tsx';
 import type { RoomReference } from '../features/room/session.ts';
 import { roomPhaseLabels } from '../presentation/labels.ts';
 import { ApiFailure, errorMessage, get, post } from '../transport/http.ts';
@@ -84,10 +85,11 @@ export function AuthenticatedShell({ profile, bootstrap, catalog, onProfile, onL
     : <p role="status">正在读取当前房间…</p>;
   return <main className={`home-layout ${isRoomPage ? 'home-layout--room' : ''} ${roomVisible && roomView?.room.phase === 'playing' ? 'home-layout--playing' : ''}`}><aside className="navigation"><div className="brand"><Emblem/><span>剧院死神<small>THEATER DEATH</small></span></div>
     <nav aria-label="主导航"><button className={`nav-item ${selected === 'home' ? 'active' : ''}`} onClick={goHome}>剧院首页</button><button className={`nav-item ${selected === 'room' ? 'active' : ''}`} onClick={() => navigate(reference ? `/room/${reference.roomCode}` : current ? `/room/${current.roomCode}` : '/join')}>我的房间</button><button className={`nav-item ${selected === 'account' ? 'active' : ''}`} onClick={() => navigate('/account')}>我的账户</button></nav>
-    <div className="nav-profile"><Avatar url={profile.avatarUrl} name={profile.username}/><span title={profile.username}>{profile.username}</span><button className="text-button" disabled={logoutBusy} onClick={() => { if (reference) setLogoutConfirm(true); else void logout(); }}>退出登录</button></div></aside>
+    <div className="nav-profile"><Avatar url={profile.avatarUrl} name={profile.nickname}/><span title={`${profile.nickname} · UID ${profile.uid}`}>{profile.nickname}</span><button className="text-button" disabled={logoutBusy} onClick={() => { if (reference) setLogoutConfirm(true); else void logout(); }}>退出登录</button></div></aside>
     <section className="home-main">
       {failure && <Notice error>{failure}</Notice>}
       {notice && <Notice>{notice}<button className="text-button" onClick={() => setNotice('')}>知道了</button></Notice>}
+      <VoiceBar enabled={bootstrap.features.voice} view={roomView} online={session.canWrite} activePage={roomVisible && roomView?.room.phase === 'playing'}/>
       {selected === 'account' ? <AccountPage profile={profile} bootstrap={bootstrap} onProfile={onProfile} onExpired={onLogout}/> : route === '/create' ?
         <CreateRoom userId={profile.userId} catalog={catalog} bootstrap={bootstrap} blocked={!!rooms?.currentRoomId} loading={checkingRooms} onCreated={entered} onExpired={onLogout} onBack={goHome}/> : roomVisible ? null : selected === 'room' ? <EnterRoom key={roomCode ?? 'join'} userId={profile.userId} initialCode={roomCode ?? ''} blocked={blockedOtherRoom} loading={checkingRooms} onEntered={entered} onExpired={onLogout} onBack={goHome}/> : <>
           <PageHeading eyebrow="THE FOYER" title="下一场，等你入席。">每一张面孔，都有尚未揭晓的故事。</PageHeading><div className="home-hero"><span className="eyebrow">THEATER DEATH</span><h2>幕布之后，<br/>真相尚未落定。</h2><p>与同伴一起，开启一场新的演出。</p><div className="button-row">{current ? <button className="button button--primary" disabled={fetchingRooms} onClick={() => navigate(`/room/${current.roomCode}`)}>{current.phase === 'lobby' ? '返回当前房间' : current.phase === 'review' ? '查看当前复盘' : '继续对局'}</button> : <><button className="button button--primary" disabled={checkingRooms} onClick={() => navigate('/join')}>加入房间</button><button className="button" disabled={checkingRooms} onClick={() => navigate('/create')}>创建房间</button></>}</div></div>

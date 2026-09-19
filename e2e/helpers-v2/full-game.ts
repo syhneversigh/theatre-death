@@ -9,7 +9,7 @@ export function loadFullGameAccounts(projectName: string): FullGameAccount[] {
 }
 
 export async function loginApi(request: APIRequestContext, account: FullGameAccount): Promise<void> {
-  const response = await request.post('/api/v2/auth/login', { data: { username: account.username, password: account.password } });
+  const response = await request.post('/api/v2/auth/login', { data: { uid: account.uid, password: account.password } });
   if (response.status() !== 200) throw new Error(`full-game login failed: ${response.status()}`);
 }
 

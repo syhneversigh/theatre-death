@@ -21,15 +21,16 @@ function setup() {
   const logStore = createLogStore(':memory:');
   const registry = new RoomRegistry({ clock, ruleset: THEATER_DEATH_13_V2, logStore, strictWindows: true });
   const directory = new RoomDirectory({ clock, accounts, logStore, registry, revokeMedia: () => undefined, changed: () => undefined, control: () => undefined });
-  const profiles = new Map<string, { userId: string; username: string; avatarUrl: string | null; profileVersion: number }>();
+  const profiles = new Map<string, { userId: string; uid: string; nickname: string; avatarUrl: string | null; profileVersion: number }>();
   const snapshots = new RoomSnapshots({ directory, profile: (userId) => profiles.get(userId)! });
   stores.push(accounts, logStore);
   return { clock, accounts, directory, registry, profiles, snapshots };
 }
 
-function account(accounts: AccountStore, profiles: Map<string, { userId: string; username: string; avatarUrl: string | null; profileVersion: number }>, name: string) {
-  const row = accounts.register(name, 'hash', accounts.invite().token);
-  profiles.set(row.id, { userId: row.id, username: row.username, avatarUrl: null, profileVersion: 0 });
+function account(accounts: AccountStore, profiles: Map<string, { userId: string; uid: string; nickname: string; avatarUrl: string | null; profileVersion: number }>, name: string) {
+  const nickname = name.replace(/\d/g, digit => String.fromCharCode(97 + Number(digit)));
+  const row = accounts.register(`snapshot-${name}`, nickname, 'hash').account;
+  profiles.set(row.id, { userId: row.id, uid: row.uid, nickname: row.nickname, avatarUrl: null, profileVersion: 0 });
   return { userId: row.id, session: accounts.createSession(row.id).session };
 }
 
@@ -54,7 +55,7 @@ describe('v2 RoomSnapshot contract', () => {
     const room = await f.directory.create(host.session, THEATER_DEATH_13_V2);
     const snapshot = f.snapshots.read(room, host.session);
     expect(Object.keys(snapshot).sort()).toEqual(['capabilities', 'chat', 'contractVersion', 'gameId', 'private', 'public', 'room', 'roomId', 'rulesVersion', 'serverTime', 'submissionState', 'tasks', 'viewer', 'viewVersion', 'windows'].sort());
-    expect(snapshot).toMatchObject({ contractVersion: '2.1', gameId: null, public: null, private: null, tasks: [], windows: [], submissionState: [], chat: { public: [], faction: [] } });
+    expect(snapshot).toMatchObject({ contractVersion: '2.2', gameId: null, public: null, private: null, tasks: [], windows: [], submissionState: [], chat: { public: [], faction: [] } });
     expect(snapshot.room.formalMembers).toHaveLength(1);
     expect(snapshot.viewer.isHost).toBe(true);
     expect(snapshot.capabilities.room.start).toMatchObject({ allowed: false, reason: 'room_not_full' });

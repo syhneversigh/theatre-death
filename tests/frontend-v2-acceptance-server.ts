@@ -7,6 +7,7 @@ import { createLogStore } from '../server/log-store.ts';
 import { AccountStore } from '../server/v2/account-store.ts';
 import { createV2App } from '../server/v2/app.ts';
 import { AvatarStore } from '../server/v2/avatars.ts';
+import { createLiveKitVoiceService } from '../voice/livekit.ts';
 
 const dataDir = process.env.DATA_DIR;
 const clockPath = '/clock-control/clock.sock';
@@ -21,7 +22,10 @@ const clock = createFakeClock(Number(process.env.CLOCK_START_MS ?? Date.now()));
 const accounts = new AccountStore(join(dataDir, 'accounts.sqlite'), () => clock.now());
 const logStore = createLogStore(join(dataDir, 'audit.sqlite'));
 const avatars = new AvatarStore(accounts, join(dataDir, 'avatars'));
-const backend = createV2App({ accounts, clock, logStore, avatars, origin: 'http://localhost:5173', cookieName: process.env.ACCOUNT_COOKIE_NAME ?? 'td_account_frontend_acceptance', secureCookies: false, voice: null });
+const voice = process.env.VOICE_ENABLED === 'true' ? createLiveKitVoiceService({
+  adminUrl: process.env.VOICE_ADMIN_URL!, publicUrl: process.env.VOICE_SERVICE_URL!, apiKey: process.env.LIVEKIT_API_KEY!, apiSecret: process.env.LIVEKIT_API_SECRET!, tokenTtlSeconds: 30, removeUnknownParticipants: true,
+}) : null;
+const backend = createV2App({ accounts, clock, logStore, avatars, origin: 'http://localhost:5173', cookieName: process.env.ACCOUNT_COOKIE_NAME ?? 'td_account_frontend_acceptance', secureCookies: false, voice });
 const server: Server = createServer(backend.app);
 backend.hub.attachV2(server);
 const control = createNetServer(socket => handleControl(socket));

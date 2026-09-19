@@ -31,7 +31,8 @@ function setup() {
 }
 
 function account(accounts: AccountStore, name: string) {
-  const row = accounts.register(name, 'hash', accounts.invite().token);
+  const nickname = name.replace(/\d/g, digit => String.fromCharCode(97 + Number(digit)));
+  const row = accounts.register(`governance-${name}`, nickname, 'hash').account;
   return { userId: row.id, session: accounts.createSession(row.id).session };
 }
 

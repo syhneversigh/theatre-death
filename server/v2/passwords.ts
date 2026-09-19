@@ -19,7 +19,8 @@ const derive = (password: string, salt: Buffer) => queue.run(() => new Promise<B
   scrypt(password, salt, 64, { N: 2 ** 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 }, (error, key) => { if (error) reject(error); else resolve(key); });
 }));
 export function validatePassword(password: unknown): asserts password is string {
-  if (typeof password !== 'string' || password.length < 12 || password.length > 128) throw new ApiError(400, 'password_length', '密码长度须为12至128个字符');
+  const length = typeof password === 'string' ? [...password].length : 0;
+  if (typeof password !== 'string' || length < 8 || length > 16) throw new ApiError(400, 'password_length', '密码长度须为8至16个字符');
 }
 export async function hashPassword(password: string): Promise<string> {
   validatePassword(password);

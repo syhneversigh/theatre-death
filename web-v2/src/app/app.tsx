@@ -27,7 +27,7 @@ export function App() {
       get<AuthMe>('/auth/me', abort.signal).catch(error => { if (error instanceof ApiFailure && error.code === 'unauthorized') return null; throw error; }),
     ]).then(([bootstrap, catalog, profile]) => {
       if (abort.signal.aborted) return;
-      if (bootstrap.contractVersion !== '2.1' || bootstrap.rulesVersion !== '2.0' || catalog.rulesVersion !== '2.0') { setFailure('当前服务版本与页面不匹配，请使用配套入口。'); return; }
+      if (bootstrap.contractVersion !== '2.2' || bootstrap.rulesVersion !== '2.0' || catalog.rulesVersion !== '2.0') { setFailure('当前服务版本与页面不匹配，请使用配套入口。'); return; }
       setBoot({ bootstrap, catalog, profile });
     }).catch(error => { if (!abort.signal.aborted) setFailure(errorMessage(error)); });
     return () => abort.abort();

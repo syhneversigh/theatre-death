@@ -11,7 +11,7 @@ import { createV2App } from '../server/v2/app.ts';
 import { createFakeClock, type FakeClock } from '../server/clock.ts';
 import { createLogStore, type LogStore } from '../server/log-store.ts';
 
-type User = { username: string; userId: string; cookie: string; sessionId: string };
+type User = { uid: string; nickname: string; userId: string; cookie: string; sessionId: string };
 type Harness = { app: ReturnType<typeof createV2App>; accounts: AccountStore; avatars?: AvatarStore; clock: FakeClock; logStore: LogStore; users: User[]; server: Server; base: string; directory: string };
 const harnesses: Harness[] = [];
 
@@ -31,9 +31,9 @@ async function makeHarness(avatarsEnabled = true, count = 14): Promise<Harness> 
   const avatars = avatarsEnabled ? new AvatarStore(accounts, join(directory, 'avatars')) : undefined;
   const users: User[] = [];
   for (let index = 1; index <= count; index += 1) {
-    const account = accounts.register(`avatar_user_${index}`, 'dummy-hash', accounts.invite().token);
+    const account = accounts.register(`avatar-user-${index}`, `avataruser${String.fromCharCode(96 + index)}`, 'dummy-hash').account;
     const session = accounts.createSession(account.id);
-    users.push({ username: account.username, userId: account.id, sessionId: session.session.id, cookie: `td_account_v2=${session.token}` });
+    users.push({ uid: account.uid, nickname: account.nickname, userId: account.id, sessionId: session.session.id, cookie: `td_account_v2=${session.token}` });
   }
   const app = createV2App({ accounts, clock, logStore, avatars, origin: 'http://allowed.test' });
   const server = createServer(app.app);
@@ -95,8 +95,7 @@ describe('v2 avatar HTTP and profile contract', () => {
     const crossOrigin = await request(enabled, '/api/v2/me/avatar', { ...put(bytes, 'image/png'), headers: { 'content-type': 'image/png', origin: 'http://evil.test' } }, enabled.users[0]);
     expect(crossOrigin.status).toBe(403);
     expect((await json(await request(enabled, '/api/v2/bootstrap'))).features.avatars).toBe(true);
-    const registeredInvite = enabled.accounts.invite();
-    const registered = await request(enabled, '/api/v2/auth/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: 'avatar_registered', password: 'valid password value', invitation: registeredInvite.token }) });
+    const registered = await request(enabled, '/api/v2/auth/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ requestId: 'avatar-register', nickname: 'avatarregistered', password: 'valid888' }) });
     expect(registered.status).toBe(201);
     expect(await json(registered)).toMatchObject({ avatarUrl: null, profileVersion: 0 });
   }, 30_000);
@@ -108,7 +107,7 @@ describe('v2 avatar HTTP and profile contract', () => {
       const response = await request(h, '/api/v2/me/avatar', put(await image(format), `image/${format}`), h.users[0]);
       expect(response.status).toBe(200);
       const profile = await json(response);
-      expect(profile).toMatchObject({ userId: h.users[0]!.userId, username: h.users[0]!.username, avatarUrl: expect.stringMatching(/^\/api\/v2\/avatars\//), profileVersion: index + 1 });
+      expect(profile).toMatchObject({ userId: h.users[0]!.userId, uid: h.users[0]!.uid, nickname: h.users[0]!.nickname, avatarUrl: expect.stringMatching(/^\/api\/v2\/avatars\//), profileVersion: index + 1 });
       expect(profile.profileVersion).toBeGreaterThan(previousVersion); previousVersion = profile.profileVersion;
       const avatar = await request(h, profile.avatarUrl, {}, h.users[0]);
       expect(avatar.status).toBe(200);
@@ -160,7 +159,7 @@ describe('v2 avatar HTTP and profile contract', () => {
     const review = await request(h, `/api/v2/rooms/${room.roomCode}/review`, {}, h.users[0]);
     expect(review.status).toBe(200);
     const reviewBody = await json(review);
-    expect(reviewBody.review.players.find((player: any) => player.username === h.users[0]!.username).avatarUrl).toBe(profile.avatarUrl);
+    expect(reviewBody.review.players.find((player: any) => player.nickname === h.users[0]!.nickname).avatarUrl).toBe(profile.avatarUrl);
     live.socket.disconnect();
   }, 30_000);
 

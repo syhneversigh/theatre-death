@@ -6,12 +6,14 @@
 
 ## 入口与边界
 
-- 新版页面为 web-v2；API契约2.1，规则2.0。
+2026-09-19 新增房间退出对齐，见 [各阶段行为与验证](frontend-v2-room-exit.md)：复盘可直接退出；最后正式成员退出立即关闭终局房间；局中保留暂离和原账号恢复。属于仓库迭代，未切换当前5174镜像。
+
+- 新版页面为 web-v2；当前仓库API契约2.2（数字UID与直接注册），规则2.0；常驻5174仍需候选切换才会生效。
 - 开发环境：deploy/compose.frontend.yml，http://localhost:5173，Vite联调。
 - 完整本地候选：deploy/compose.frontend-local.yml，http://localhost:5174，网页、HTTP、Socket、头像由同一个服务提供。
 - 本地候选使用独立命名卷 frontend-local-data 和 Cookie td_account_frontend_local；不读取原3000/3001/3003或前端开发数据目录。
 - 本地HTTP的API设置为development；前端产物始终强制production构建。后续公网HTTPS部署应配置准确的PUBLIC_BASE_URL和NODE_ENV=production，不放宽服务端HTTPS校验。
-- 当前VOICE_ENABLED=false；文字版不要求麦克风。真实媒体和双设备语音未验收。
+- 默认VOICE_ENABLED=false；新版公共语音代码与可选自托管配置见 `frontend-v2-voice.md`。本地媒体链路与公网双设备验收状态以语音验收记录为准，文字功能不依赖麦克风。
 
 ## 构建与运行
 
@@ -75,17 +77,17 @@ Set-Location -LiteralPath 'D:\myApps\暴风雪剧院\theater-death'
 
 ## 账号维护
 
-新卷初始没有玩家账号。维护者在本机生成邀请码，再通过页面注册：
+新卷初始没有玩家账号，注册默认开放。管理后台可停止或重新开放注册；CLI只保留同一设置的应急入口：
 
 ```powershell
-docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts invite
-docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts reset-password 'player_name'
-docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts revoke-invite 'invitation_id'
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts registration status
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts registration off
+docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.yml exec app node server/v2/admin.ts registration on
 ```
 
-将player_name和invitation_id替换为实际账号与邀请码ID。这些命令输出的一次性码应私下交给对应玩家，不放入截图、Git或验收报告。密码重置码由维护者签发，页面不提供邮件找回。
+玩家直接注册后获得不可变数字UID。忘记密码由管理员在 `/admin` 为指定UID直接设置8–16位新密码；密码不在响应或审计日志回显。
 
-日常管理建议使用 `/admin`：可以搜索、改名、清除头像、注销会话、停用/启用账户，查看邀请码状态并生成、调整到期时间、撤销或重新生成。账户停用可恢复；大厅席位会释放，对局/复盘席位保留为离线，避免破坏结算和历史。邀请码与重置码原文只在生成弹窗显示一次，数据库不保存原文。详细行为及接口见 `frontend-v2-admin.md` 和 `openapi-admin-v2.1.json`。
+日常管理建议使用 `/admin`：可以控制新用户注册，按UID/昵称搜索，改昵称、清除头像、注销会话、停用/启用、直接设置新密码或永久删除符合条件的账号。账户停用可恢复；永久删除仅限无关联进行中对局的账号，并保留完成对局历史。详细行为及接口见 `frontend-v2-admin.md` 和 `openapi-admin-v2.2.json`。
 
 ## 停止与数据
 
@@ -101,6 +103,6 @@ docker compose --env-file .env.frontend-local -f deploy/compose.frontend-local.y
 
 最终产物的隔离验证编排为deploy/compose.frontend-smoke.yml：不开放宿主端口，使用另一个独立数据卷，浏览器通过http://theater-smoke:3000访问实际候选。13-release-smoke.spec.ts验证非localhost HTTP请求ID兼容、实际静态资源/源码404、注册登录/头像/Socket以及真实五人开局；报告results-f10-release-{chromium,webkit}.json分别1/1通过。使用theater-smoke别名，避免裸app域名被浏览器自动升级HTTPS。测试项目已停止，测试账号未写入本地交付卷。
 
-新增15-admin.spec.ts也对实际候选镜像完成Chromium/WebKit验证，每个项目连同13共4/4通过，报告为results-admin-release-{chromium,webkit}.json。覆盖独立管理员登录、邀请与真实注册、账户治理、头像、停用/启用、重置码、邀请编辑/撤销/再生成及未知响应重试。手机邀请码列表另有宽度、触控尺寸与无横向溢出断言。
+下述15-admin历史验收对应契约2.1的邀请码管理版本；契约2.2的直接注册、注册开关、管理员改密和永久删除以新的增量验收记录为准。
 
 18类行动与正式13人首局复盘/第二局启动分别由09和11真实链验证；账户异常、草稿、跨账号、房间治理、重连、响应式与键盘验证见验收台账。手机软键盘采用浏览器等效视口验证，没有冒充物理手机实测。真实媒体语音、正式数据脱敏/迁移、公网部署及原服务入口切换仍由用户后续安排；当前没有文本版交付阻塞项。

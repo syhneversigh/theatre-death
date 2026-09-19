@@ -25,7 +25,7 @@ function fixture() {
   const room = new Room('R1', 'g1', host, THEATER_DEATH_13);
   const users = new Map<string, AccountSession>();
   for (const username of ['user_a', 'user_b', 'user_c', 'user_d']) {
-    const account = store.register(username, 'dummy-hash', store.invite().token);
+    const account = store.register(`access-${username}`, username, 'dummy-hash').account;
     users.set(username, store.createSession(account.id).session);
   }
   const revoked: string[] = [];
@@ -38,7 +38,7 @@ describe('16 席位访问租约', () => {
   it('登录不接管旧 session，显式 takeover 才失效旧 resolve 并撤销媒体', () => {
     const f = fixture();
     const first = f.users.get('user_a')!;
-    const secondAccount = f.store.byName('user_a')!;
+  const secondAccount = f.store.byId(f.users.get('user_a')!.userId)!;
     const second = f.store.createSession(secondAccount.id).session;
     f.access.bind('p_1', first);
     expect(f.access.resolve(first)).not.toBeNull();

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { closeHarnesses, connectRoom, enter, json, makeHarness, post, request, waitFor, type HttpHarness } from './contract-http-utils.ts';
 
-const openapi = JSON.parse(readFileSync(new URL('../docs/openapi-v2.1.json', import.meta.url), 'utf8')) as { components: { schemas: Record<string, any> } };
+const openapi = JSON.parse(readFileSync(new URL('../docs/openapi-v2.2.json', import.meta.url), 'utf8')) as { components: { schemas: Record<string, any> } };
 const ajv = new Ajv2020({ strict: true });
 const exportedFixtures: Array<{ file: string; schema: string; endpoint: string; scenario: string }> = [];
 const fixtureRoot = process.env.EXPORT_CONTRACT_FIXTURES;

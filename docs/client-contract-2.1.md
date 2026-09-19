@@ -16,6 +16,8 @@ Room 的 roomId 与房间码跨局不变。memberId 表示当前房间成员，�
 
 进入房间只调用 `POST /rooms/:code/enter`。服务端决定正式/公开观众/恢复/需要显式接管；已有观众不会因为出现空位被自动转正式。使用 `promote` 申请转正式，失败仍是原观众。账号存在另一当前房间时返回 `already_in_room`，应先由用户明确离开。
 
+2026-09-19 退出对齐：`POST /rooms/:code/leave` 保留原请求与响应格式，退出房间不注销账号。局中正式玩家显示“暂离对局”，本局席位保留，对局继续计时。复盘页提供直接“离开房间”，房主退出不解散仍有正式成员的房间；按现有在线正式成员规则继任。复盘阶段无正式成员时立即关闭房间（含剩余观众），最后退出者的 `seatRetained=false`；单纯离线仍计为正式成员。大厅与进行中阶段无正式成员仍按5分钟清理。房主“结束复盘，返回大厅”是独立操作，保留原房间供下一局使用。完整对比见 [房间退出对齐](frontend-v2-room-exit.md)。
+
 ## 请求结果与重试
 
 房间写操作使用 UUID requestId；同一意图重试复用 ID，不同意图生成新 ID。局内操作还必须携带 gameId，命令再带窗口的 windowInstanceId。身份从 Cookie 获取，不能提交 playerId 冒充操作者。旧 gameId 返回 `stale_game`，旧窗口返回 `stale_window`，超时返回 `window_closed`，同 ID 不同内容返回 `request_id_reused`。

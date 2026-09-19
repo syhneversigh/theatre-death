@@ -1,8 +1,8 @@
 import type { RoleId, RulesetConfig, FactionId } from '../rulesets/types.ts';
 
 export interface BootstrapDTO {
-  contractVersion: '2.1'; rulesVersion: '2.0';
-  auth: { registration: 'invitation'; username: { minLength: number; maxLength: number; pattern: string }; password: { minLength: number; maxLength: number }; sessionMaxAgeSeconds: number };
+  contractVersion: '2.2'; rulesVersion: '2.0';
+  auth: { registration: 'open' | 'closed'; uid: { minLength: number; maxLength: number; pattern: string }; nickname: { minLength: number; maxLength: number }; password: { minLength: number; maxLength: number }; sessionMaxAgeSeconds: number };
   avatar: { maxBytes: number; maxDimension: number; outputSize: number; formats: string[] };
   features: { voice: boolean; avatars: boolean; customBoards: boolean; secondScreens: boolean; persistentAccounts: boolean; gameRecovery: boolean };
   socket: { path: string; pingIntervalMs: number; pingTimeoutMs: number; disconnectGraceMs: number };

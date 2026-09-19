@@ -11,7 +11,9 @@ Set-Location -LiteralPath 'D:\myApps\暴风雪剧院\theater-death'
 
 根目录“启动游戏.cmd”和“停止游戏.cmd”也已指向5174。首次构建、维护及恢复见 [当前交接说明](docs/frontend-v2-handoff.md)。旧3000/3001/3003/5173实例已经下线；下方1.x命令仅保留作历史说明，不是当前本地启动入口。源码、回归测试和当前构建依赖继续保留。
 
-新版前端（契约2.1 / 规则2.0）的完整本地交付已验收，使用独立入口 `http://localhost:5174`；账户与邀请码管理入口为 `/admin`，需在忽略提交的 `.env.frontend-local` 中设置维护者密码。构建、启动及账户维护见 [新版交接说明](docs/frontend-v2-handoff.md)，管理行为见 [管理说明](docs/frontend-v2-admin.md)，验证结果见 [前端验收台账](docs/frontend-v2-acceptance.md)。下文保留旧版部署说明；新版不需要切换旧服务或迁移正式数据。
+新版前端使用规则2.0；当前仓库迭代到客户端契约2.2（数字UID、可改昵称、直接注册），本地常驻5174仍需候选切换后生效。管理入口为 `/admin`，需在忽略提交的 `.env.frontend-local` 中设置维护者密码。构建、启动及账户维护见 [新版交接说明](docs/frontend-v2-handoff.md)，账号协议见 [契约2.2](docs/client-contract-2.2.md)，管理行为见 [管理说明](docs/frontend-v2-admin.md)。
+
+新版可选公共语音的本地开发、自托管部署和验收记录见 [语音说明](docs/frontend-v2-voice.md) 与 [语音验收](docs/frontend-v2-voice-acceptance.md)。默认启动仍关闭语音。
 
 13 人 9 身份的社交推理游戏**在线法官**：服务端持有真实状态并做全部裁决，纯规则引擎 + Socket.IO 实时推送 + 网页前端；支持「玩家电脑 / 第三方服务器」两种托管（同一 Docker 镜像）。
 

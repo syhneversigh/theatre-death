@@ -4,7 +4,7 @@ import type { RoleId } from '../../../../rulesets/types.ts';
 import { describeEvent } from '../../presentation/events.ts';
 import type { EventText } from '../../presentation/events.ts';
 
-export interface ReviewPlayer { playerId: string; seat: number; roleId: RoleId; life: 'alive' | 'dead'; revealed: boolean; username: string; avatarUrl: string | null }
+export interface ReviewPlayer { playerId: string; uid: string; seat: number; roleId: RoleId; life: 'alive' | 'dead'; revealed: boolean; nickname: string; avatarUrl: string | null }
 export interface ReviewEvent { dayNumber: number; stage: 1 | 2; type: string; payload: JsonValue }
 export interface ReviewMessage { id: number; messageId?: string; senderId: string; senderSeat: number | null; text: string; at: number }
 export interface ReviewDTO {
@@ -17,7 +17,7 @@ export const reviewScope = (view: RoomSnapshot) => JSON.stringify([view.viewer.u
 /** Server-only events become visible only through the authorized end-game review. */
 export function reviewEventText(event: ReviewEvent, review: ReviewDTO, view: RoomSnapshot, catalog: CatalogDTO): EventText {
   const p = event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload) ? event.payload : {};
-  const player = (id: unknown) => { const found = review.players.find(item => item.playerId === id); return found ? `${found.seat}号 ${found.username}` : '未提供玩家'; };
+  const player = (id: unknown) => { const found = review.players.find(item => item.playerId === id); return found ? `${found.seat}号 ${found.nickname}` : '未提供玩家'; };
   const array = (value: JsonValue | undefined): JsonValue[] => Array.isArray(value) ? value : [];
   const object = (value: JsonValue): Record<string, JsonValue> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {};
   switch (event.type) {

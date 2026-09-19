@@ -42,7 +42,7 @@ interface Harness {
   server: Server;
   base: string;
   revoked: string[];
-  profiles: Map<string, { userId: string; username: string; avatarUrl: string | null; profileVersion: number }>;
+  profiles: Map<string, { userId: string; uid: string; nickname: string; avatarUrl: string | null; profileVersion: number }>;
   close(): Promise<void>;
 }
 
@@ -66,7 +66,7 @@ async function harness(): Promise<Harness> {
   let hub: ReturnType<typeof createRoomRealtime> | undefined;
   let governance: RoomGovernance | undefined;
   const revoked: string[] = [];
-  const profiles = new Map<string, { userId: string; username: string; avatarUrl: string | null; profileVersion: number }>();
+  const profiles = new Map<string, { userId: string; uid: string; nickname: string; avatarUrl: string | null; profileVersion: number }>();
   const directory = new RoomDirectory({
     clock, accounts, logStore, registry,
     revokeMedia: (_gameId, identity) => revoked.push(identity),
@@ -97,8 +97,9 @@ function profileMap(h: Harness) {
 }
 
 function account(h: Harness, username: string): User {
-  const row = h.accounts.register(username, 'hash', h.accounts.invite().token);
-  profileMap(h).set(row.id, { userId: row.id, username: row.username, avatarUrl: null, profileVersion: 0 });
+  const nickname = username.replace(/\d/g, digit => String.fromCharCode(97 + Number(digit)));
+  const row = h.accounts.register(`realtime-${username}`, nickname, 'hash').account;
+  profileMap(h).set(row.id, { userId: row.id, uid: row.uid, nickname: row.nickname, avatarUrl: null, profileVersion: 0 });
   const created = h.accounts.createSession(row.id);
   return { userId: row.id, session: created.session, cookie: `td_account_v2=${created.token}` };
 }
@@ -146,7 +147,7 @@ describe('v2 stable room realtime lifecycle', () => {
     const views = collectViews(socket);
     await waitFor(() => views.length > 0);
     expect(views[0]).toMatchObject({ roomId: room.roomId, gameId: null, viewer: { userId: host.userId, kind: 'formal' }, room: { code: room.code, phase: 'lobby' } });
-    expect(views[0]?.room.formalMembers[0]).toMatchObject({ userId: host.userId, username: 'realtime_handshake_host', avatarUrl: null });
+    expect(views[0]?.room.formalMembers[0]).toMatchObject({ userId: host.userId, nickname: 'realtime_handshake_host', avatarUrl: null });
     expect(room.members.get(host.userId)?.presence).toBe('online');
 
     const badCookie = { ...host, cookie: 'td_account_v2=bad' };

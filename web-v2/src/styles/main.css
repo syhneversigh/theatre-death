@@ -283,6 +283,15 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .effective-proposal { border-top: 1px solid #c8d2df; padding-top: 12px; font-size: 12px; }
 .effective-proposal small { font-size: 10px; color: var(--muted); }
 .speaker-banner { color: #786849; font-size: 12px; padding: 9px 0; margin: 0 0 10px; }
+.voice-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; padding: 10px 13px; margin: 0 0 12px; border: 1px solid #c9d1d8; border-radius: 10px; background: #f8fafbd9; box-shadow: 0 5px 18px #3446570b; }
+.voice-bar--background { position: sticky; top: 10px; z-index: 8; }
+.voice-bar__status { display: grid; gap: 2px; min-width: 118px; }
+.voice-bar__status strong { font-size: 12px; letter-spacing: .08em; }
+.voice-bar__status span, .voice-bar__hint { color: var(--muted); font-size: 11px; }
+.voice-bar__error { color: var(--danger); font-size: 11px; flex-basis: 100%; }
+.voice-bar__device { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); }
+.voice-bar__device select { max-width: 190px; min-height: 34px; border: 1px solid var(--line); border-radius: 7px; background: white; padding: 5px 8px; }
+.voice-bar .button { min-height: 34px; padding: 6px 11px; font-size: 11px; }
 .modal-game-context { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border: 1px solid var(--line); background: #e9eff6; padding: 9px 12px; margin: 0 0 20px; font-size: 11px; position: sticky; top: -25px; z-index: 2; }
 .identity-view { font-size: 13px; }
 .identity-card { display: block; width: min(260px,100%); height: auto; margin: 0 auto 23px; }
@@ -390,6 +399,10 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .hud-meta span { font-size: 10px; }
   .hud-tools { width: 100%; justify-content: flex-end; }
   .hud-tools .button { min-height: 34px; font-size: 11px; padding: 6px 11px; }
+  .voice-bar { align-items: stretch; }
+  .voice-bar__status { width: 100%; }
+  .voice-bar__device { width: 100%; justify-content: space-between; }
+  .voice-bar__device select { flex: 1; }
   .stage-seats--ring, .stage-seats--grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px 10px; padding: 18px 12px; }
   .seat-main { min-height: 113px; }
   .seat-tools button { min-height: 34px; padding: 7px 9px; }

@@ -14,14 +14,14 @@ function mutate(view: RoomSnapshot, changes: Partial<RoomSnapshot>): RoomSnapsho
 }
 
 describe('v2 frontend snapshot cursor', () => {
-  it('accepts a complete 2.1/2.0 snapshot only for its account and room, and drops stale HTTP or Socket views', () => {
+  it('accepts a complete 2.2/2.0 snapshot only for its account and room, and drops stale HTTP or Socket views', () => {
     const base = snapshot();
     const cursor = new SnapshotCursor(base.viewer.userId, base.roomId, () => 100);
 
     expect(cursor.accept(base)).toEqual({ updated: true, gameChanged: false, perspectiveChanged: false });
     const retained = cursor.snapshot();
     expect(retained).toMatchObject({
-      contractVersion: '2.1', rulesVersion: '2.0', roomId: base.roomId,
+      contractVersion: '2.2', rulesVersion: '2.0', roomId: base.roomId,
       gameId: base.gameId, viewer: base.viewer, private: base.private,
     });
 
@@ -106,14 +106,14 @@ describe('v2 frontend snapshot cursor', () => {
     cursor.accept(incoming);
 
     incoming.room.code = 'mutated-input';
-    incoming.private!.self.username = 'mutated-input';
+    incoming.private!.self.nickname = 'mutated-input';
     const returned = cursor.snapshot()!;
     returned.room.code = 'mutated-return';
-    returned.private!.self.username = 'mutated-return';
+    returned.private!.self.nickname = 'mutated-return';
 
     const retained = cursor.snapshot()!;
     expect(retained.room.code).toBe(fixture.room.code);
-    expect(retained.private?.self.username).toBe(fixture.private?.self.username);
+    expect(retained.private?.self.nickname).toBe(fixture.private?.self.nickname);
   });
 });
 
@@ -129,11 +129,11 @@ describe('v2 frontend control and profile guards', () => {
   });
 
   it('accepts only the active account and a non-decreasing profile version', () => {
-    const old: Profile = { userId: 'u1', username: 'old', avatarUrl: null, profileVersion: 2 };
-    const stale: Profile = { ...old, username: 'stale', profileVersion: 1 };
-    const sameVersion: Profile = { ...old, username: 'same-version', profileVersion: 2 };
-    const fresh: Profile = { ...old, username: 'fresh', profileVersion: 3 };
-    const other: Profile = { userId: 'u2', username: 'other', avatarUrl: null, profileVersion: 99 };
+    const old: Profile = { userId: 'u1', uid: '10000001', nickname: 'old', avatarUrl: null, profileVersion: 2 };
+    const stale: Profile = { ...old, nickname: 'stale', profileVersion: 1 };
+    const sameVersion: Profile = { ...old, nickname: 'same-version', profileVersion: 2 };
+    const fresh: Profile = { ...old, nickname: 'fresh', profileVersion: 3 };
+    const other: Profile = { userId: 'u2', uid: '10000002', nickname: 'other', avatarUrl: null, profileVersion: 99 };
 
     expect(acceptProfile(old, stale, 'u1')).toEqual(old);
     expect(acceptProfile(old, sameVersion, 'u1')).toEqual(sameVersion);

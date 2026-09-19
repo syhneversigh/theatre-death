@@ -38,6 +38,7 @@ async function mount(page: Page, fixture: GameHarnessFixture, options: { reviewM
 
 test('独立复盘慢响应保留概览，并展示13身份、最终生命、服务器顺序与全部交流', async ({ page }) => {
   const document = loadReviewDocument();
+  const seatOneNickname = document.review.players.find(player => player.seat === 1)!.nickname;
   document.review.chat.faction = [{ id: 2, messageId: 'faction-message-2', senderId: document.review.players[9]!.playerId, senderSeat: 10, text: '<阵营>纯文本', at: 92_000 }];
   document.review.timeline.push(
     { dayNumber: 1, stage: 1, type: 'attack_events', payload: { attacks: [{ sourceRoleId: 'death', targetPlayerId: document.review.players[0]!.playerId, blocked: false }] } },
@@ -55,7 +56,7 @@ test('独立复盘慢响应保留概览，并展示13身份、最终生命、服
   await expect(cards).toHaveCount(13);
   const catalogNames: Record<string, string> = { researcher: '科研员', civilian: '平民', door: '门先生', mourner: '丧亲者', death: '死神', water: '水妖', descender: '降临者', spirit: '魂灵', laike: '莱莱可' };
   for (const player of document.review.players) {
-    await expect(cards.filter({ hasText: `${player.seat}号 ${player.username}` })).toContainText(`${catalogNames[player.roleId]} · ${player.life === 'alive' ? '最终存活' : '最终死亡'}`);
+    await expect(cards.filter({ hasText: `${player.seat}号 ${player.nickname}` })).toContainText(`${catalogNames[player.roleId]} · ${player.life === 'alive' ? '最终存活' : '最终死亡'}`);
   }
 
   await page.getByRole('tab', { name: '完整时间线' }).click();
@@ -75,7 +76,7 @@ test('独立复盘慢响应保留概览，并展示13身份、最终生命、服
   await expect(titles.nth(24)).toHaveText('深海召回目标');
   await expect(titles.nth(25)).toHaveText('夜末死亡确认');
   await expect(page.getByText('do-not-render-json')).toHaveCount(0);
-  await expect(page.getByText('死神 → 1号 http_user_10：未抵挡')).toBeVisible();
+  await expect(page.getByText(`死神 → 1号 ${seatOneNickname}：未抵挡`)).toBeVisible();
 
   await page.getByRole('tab', { name: '全部公屏' }).click();
   await expect(page.getByText('contract message')).toBeVisible();
@@ -88,6 +89,7 @@ test('独立复盘慢响应保留概览，并展示13身份、最终生命、服
 test('复盘GET失败可重试且拒绝错误gameId；迟到旧响应不会回填新大厅或新对局', async ({ page }) => {
   const fixture = loadReviewFixture();
   const wrong = loadReviewDocument();
+  const seatOneNickname = wrong.review.players.find(player => player.seat === 1)!.nickname;
   wrong.review.gameId = 'wrong-game-id';
   const mounted = await mount(page, fixture, { reviewMode: 'fail-once', review: wrong });
   await expect(page.getByText('暂时无法完成操作，请刷新状态后重试。')).toBeVisible();
@@ -96,7 +98,7 @@ test('复盘GET失败可重试且拒绝错误gameId；迟到旧响应不会回�
   mounted.setReview(loadReviewDocument());
   await page.getByRole('button', { name: '重新读取复盘' }).click();
   await expect(page.getByRole('tab', { name: '全部身份' })).toBeVisible();
-  await expect(page.getByText('1号 http_user_10')).toBeVisible();
+  await expect(page.getByText(`1号 ${seatOneNickname}`)).toBeVisible();
 
   const wrongView = loadReviewFixture();
   wrongView.view.gameId = 'new-game-view';
@@ -184,7 +186,7 @@ test('复盘管理转移房主未知结果返回复盘后再入管理，沿用�
   await page.goto('/game-test.html');
   await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
   await page.getByRole('button', { name: '房间管理' }).click();
-  const target = page.locator('.member-card').filter({ hasText: fixture.view.room.formalMembers[1]!.username }).first();
+  const target = page.locator('.member-card').filter({ hasText: fixture.view.room.formalMembers[1]!.nickname }).first();
   await target.getByRole('button', { name: '转移房主' }).click();
   await page.getByRole('dialog', { name: '转移房主？' }).getByRole('button', { name: '确认操作' }).click();
   await expect(page.getByRole('alert')).toContainText('尚未确认结果');
@@ -198,13 +200,74 @@ test('复盘管理转移房主未知结果返回复盘后再入管理，沿用�
   expect(typeof bodies[0]?.requestId).toBe('string');
 });
 
+test('复盘页可直接发起离开房间；取消不发送请求并保留复盘', async ({ page }, testInfo) => {
+  const fixture = loadReviewFixture();
+  const leaveBodies: Array<Record<string, unknown>> = [];
+  const forbidden: string[] = [];
+  page.on('request', request => {
+    if (/\/(?:end-review|logout)(?:$|\?)/.test(new URL(request.url()).pathname)) forbidden.push(new URL(request.url()).pathname);
+  });
+  await page.route('**/__game-fixture', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
+  await page.route('**/api/v2/rooms/*/review', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(loadReviewDocument()) }));
+  await page.route('**/api/v2/rooms/*/leave', async route => {
+    leaveBodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ left: true, seatRetained: false }) });
+  });
+  await page.goto('/game-test.html');
+  await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
+  const directExit = page.getByRole('button', { name: '离开房间', exact: true });
+  await expect(directExit).toBeVisible();
+  await directExit.click();
+  const dialog = page.getByRole('dialog', { name: '离开房间？' });
+  await expect(dialog).toBeVisible();
+  await page.screenshot({ path: '/results/review-exit-confirmation.png', fullPage: false });
+  await page.screenshot({ path: `/results/review-exit-confirmation-${testInfo.project.name}.png`, fullPage: false });
+  await dialog.getByRole('button', { name: '取消' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
+  expect(leaveBodies).toHaveLength(0);
+  expect(forbidden).toEqual([]);
+});
+
+test('复盘页离开丢失响应保留确认框，重试复用同一 requestId/body并进入测试终态', async ({ page }) => {
+  const fixture = loadReviewFixture();
+  const leaveBodies: Array<Record<string, unknown>> = [];
+  const forbidden: string[] = [];
+  page.on('request', request => {
+    if (/\/(?:end-review|logout)(?:$|\?)/.test(new URL(request.url()).pathname)) forbidden.push(new URL(request.url()).pathname);
+  });
+  await page.route('**/__game-fixture', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixture) }));
+  await page.route('**/api/v2/rooms/*/review', async route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(loadReviewDocument()) }));
+  let attempt = 0;
+  await page.route('**/api/v2/rooms/*/leave', async route => {
+    leaveBodies.push(route.request().postDataJSON() as Record<string, unknown>);
+    attempt += 1;
+    if (attempt === 1) { await route.abort('failed'); return; }
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ left: true, seatRetained: false }) });
+  });
+  await page.goto('/game-test.html');
+  await expect(page.getByRole('heading', { name: '演出落幕' })).toBeVisible();
+  await page.getByRole('button', { name: '离开房间', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '离开房间？' });
+  await dialog.getByRole('button', { name: '确认操作' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('连接中断，尚未确认结果');
+  await expect(dialog.getByRole('button', { name: '确认原退出操作' })).toBeVisible();
+  await dialog.getByRole('button', { name: '确认原退出操作' }).click();
+  await expect(page.getByRole('status')).toContainText('测试终态：你已离开房间');
+  expect(leaveBodies).toHaveLength(2);
+  expect(leaveBodies[1]).toEqual(leaveBodies[0]);
+  expect(typeof leaveBodies[0]?.requestId).toBe('string');
+  expect(forbidden).toEqual([]);
+});
+
 test('私人第二屏只读显示当前授权窗口与当前提交，不显示动作按钮/requestId；公开观众没有角色', async ({ page }) => {
   const privateFixture = loadObservedActionsFixture();
+  const seatOneNickname = privateFixture.view.public!.seats.find(seat => seat.seat === 1)!.nickname;
   const mounted = await mountPlaying(page, privateFixture);
   await expect(page.getByRole('heading', { name: '观察玩家的行动状态 · 只读' })).toBeVisible();
   await expect(page.getByText('守护 · 剩余')).toBeVisible();
   await expect(page.getByText('选择守护目标 · 已提交')).toBeVisible();
-  await expect(page.getByText('1号 http_user_10')).toBeVisible();
+  await expect(page.getByText(`1号 ${seatOneNickname}`)).toBeVisible();
   await expect(page.getByText('request-private-hidden')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '确认提交' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /放弃|提交空刀草稿|确认空守/ })).toHaveCount(0);

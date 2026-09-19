@@ -6,10 +6,10 @@ import { THEATER_DEATH_13_V2 } from '../../rulesets/theater-death-13-v2.ts';
 import { HEARTBEAT_INTERVAL_MS, HEARTBEAT_TIMEOUT_MS, DISCONNECT_GRACE_MS } from './presence.ts';
 
 export const AVATAR_LIMITS = { maxBytes: 2 * 1024 * 1024, maxDimension: 4096, outputSize: 256, formats: ['image/jpeg', 'image/png', 'image/webp'] };
-export function bootstrap(voice: boolean, avatars: boolean): BootstrapDTO {
+export function bootstrap(voice: boolean, avatars: boolean, registrationEnabled = true): BootstrapDTO {
   return {
-    contractVersion: '2.1', rulesVersion: '2.0',
-    auth: { registration: 'invitation', username: { minLength: 3, maxLength: 32, pattern: '^[A-Za-z0-9_]{3,32}$' }, password: { minLength: 12, maxLength: 128 }, sessionMaxAgeSeconds: 604800 },
+    contractVersion: '2.2', rulesVersion: '2.0',
+    auth: { registration: registrationEnabled ? 'open' : 'closed', uid: { minLength: 8, maxLength: 20, pattern: '^\\d{8,20}$' }, nickname: { minLength: 2, maxLength: 32 }, password: { minLength: 8, maxLength: 16 }, sessionMaxAgeSeconds: 604800 },
     avatar: structuredClone(AVATAR_LIMITS),
     features: { voice, avatars, customBoards: true, secondScreens: true, persistentAccounts: true, gameRecovery: false },
     socket: { path: '/api/v2/socket.io', pingIntervalMs: HEARTBEAT_INTERVAL_MS, pingTimeoutMs: HEARTBEAT_TIMEOUT_MS, disconnectGraceMs: DISCONNECT_GRACE_MS },

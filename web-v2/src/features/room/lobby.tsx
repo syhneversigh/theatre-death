@@ -6,7 +6,7 @@ import { ApiFailure } from '../../transport/http.ts';
 import { useIntent } from '../../transport/intent.ts';
 import { actionLabels, formatCountdown, presenceLabels, publicPhaseLabel, roomPermissionReasons } from '../../presentation/labels.ts';
 import { RulesBook } from '../rules/book.tsx';
-import { canManageMember, memberLabel } from './policy.ts';
+import { canManageMember, memberLabel, roomExitMessage, roomExitPresentation } from './policy.ts';
 
 type Confirmation = { action: 'kick' | 'transfer-host'; memberId: string; name: string } | { action: 'leave' | 'dissolve' };
 export function Lobby({ view, catalog, online, active = true, remaining, refresh, onExit, onExpired }: {
@@ -19,10 +19,11 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
   const [, tick] = useState(0);
   useEffect(() => { if (view.room.emptyDeadline === null) return; const timer = setInterval(() => tick(value => value + 1), 1000); return () => clearInterval(timer); }, [view.room.emptyDeadline]);
   const caps = view.capabilities.room;
+  const exit = roomExitPresentation(view);
   const operation = useIntent<Record<string, unknown>>(`${view.viewer.userId}/${view.roomId}/${view.gameId ?? 'lobby'}/${view.viewer.memberId}/${view.viewer.isHost}`, async result => {
     setConfirmation(null);
     if (result.dissolved) onExit('房间已解散。');
-    else if (result.left) onExit(result.seatRetained ? '你已离开当前连接。本局席位仍保留，重新入房可恢复。' : '你已离开房间。');
+    else if (result.left) onExit(roomExitMessage(view, result.seatRetained === true));
     else await refresh();
   }, error => { setConfirmation(null); if (error instanceof ApiFailure && error.code === 'unauthorized') onExpired(); else void refresh(); });
   const locked = !online || operation.busy || operation.unresolved;
@@ -37,10 +38,10 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
   const readyCount = view.room.formalMembers.filter(member => member.ready).length;
   const isLobby = view.room.phase === 'lobby';
   const target = (member: RoomMemberDTO) => <div className="member-card" key={member.memberId} data-member-id={member.memberId}>
-    <Avatar url={member.avatarUrl} name={member.username}/><div className="member-card__info"><strong title={member.username}>{memberLabel(member, view.viewer.userId)}</strong><div className="member-status"><span className={`presence presence--${member.presence}`}>{presenceLabels[member.presence]}</span>{member.kind === 'formal' && isLobby && <span className={member.ready ? 'badge badge--ready' : 'badge'}>{member.ready ? '已准备' : '未准备'}</span>}{member.kind !== 'formal' && <span className="badge">{member.kind === 'private_spectator' ? '私人第二屏' : '公开观众'}</span>}</div></div>
+    <Avatar url={member.avatarUrl} name={member.nickname}/><div className="member-card__info"><strong title={`${member.nickname} · UID ${member.uid}`}>{memberLabel(member, view.viewer.userId)}</strong><div className="member-status"><span className={`presence presence--${member.presence}`}>{presenceLabels[member.presence]}</span>{member.kind === 'formal' && isLobby && <span className={member.ready ? 'badge badge--ready' : 'badge'}>{member.ready ? '已准备' : '未准备'}</span>}{member.kind !== 'formal' && <span className="badge">{member.kind === 'private_spectator' ? '私人第二屏' : '公开观众'}</span>}</div></div>
     {(canManageMember(view, 'kick', member.memberId) || canManageMember(view, 'transfer-host', member.memberId)) && <div className="member-tools">
-      {canManageMember(view, 'transfer-host', member.memberId) && <button className="text-button" disabled={locked} onClick={() => setConfirmation({ action: 'transfer-host', memberId: member.memberId, name: member.username })}>转移房主</button>}
-      {canManageMember(view, 'kick', member.memberId) && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'kick', memberId: member.memberId, name: member.username })}>移出</button>}
+      {canManageMember(view, 'transfer-host', member.memberId) && <button className="text-button" disabled={locked} onClick={() => setConfirmation({ action: 'transfer-host', memberId: member.memberId, name: member.nickname })}>转移房主</button>}
+      {canManageMember(view, 'kick', member.memberId) && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'kick', memberId: member.memberId, name: member.nickname })}>移出</button>}
     </div>}
   </div>;
   return <>
@@ -57,13 +58,13 @@ export function Lobby({ view, catalog, online, active = true, remaining, refresh
       </section></div>
       <aside className="panel room-rules"><span className="eyebrow">THIS PERFORMANCE</span><h2>本局规则</h2><p>{view.room.requiredPlayers} 人 · {view.room.config.mode === 'formal' ? '正式模式' : '实验模式'}</p><dl>{catalog.roles.filter(role => view.room.config.roles[role.roleId] > 0).map(role => <div key={role.roleId}><dt>{role.name}</dt><dd>{view.room.config.roles[role.roleId]} 人</dd></div>)}</dl><p className="muted">配置已冻结，下一局也保持不变。</p><button className="button button--wide" onClick={() => setRules(true)}>查看完整规则</button></aside>
     </div>
-    <footer className="room-actions"><div><button className="text-button" disabled={locked || !caps.leave.allowed} onClick={() => setConfirmation({ action: 'leave' })}>离开房间</button>{caps.dissolve.allowed && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'dissolve' })}>解散房间</button>}</div><div className="button-row">
+    <footer className="room-actions"><div><button className="text-button" disabled={locked || !caps.leave.allowed} onClick={() => setConfirmation({ action: 'leave' })}>{exit.label}</button>{caps.dissolve.allowed && <button className="text-button danger-text" disabled={locked} onClick={() => setConfirmation({ action: 'dissolve' })}>解散房间</button>}</div><div className="button-row">
       {caps.ready.allowed && <button className="button" disabled={locked} onClick={() => run('ready', { ready: !mine?.ready })}>{mine?.ready ? '取消准备' : '准备'}</button>}
       {view.viewer.isHost && isLobby && <div className="start-control"><button className="button button--primary" disabled={locked || !caps.start.allowed} onClick={() => run('start')}>{operation.busy ? '正在确认…' : '开始游戏'}</button>{!caps.start.allowed && <span>{roomPermissionReasons[caps.start.reason ?? ''] ?? '暂时不能开局。'}</span>}</div>}
     </div></footer>
     {active && rules && <RulesBook catalog={catalog} onClose={() => setRules(false)}/>}
-    {active && confirmation && confirmationValid && <Modal title={confirmation.action === 'kick' ? '移出成员？' : confirmation.action === 'transfer-host' ? '转移房主？' : confirmation.action === 'dissolve' ? '解散房间？' : '离开房间？'} onClose={() => setConfirmation(null)} dismissible={!operation.busy}>
-      <p>{confirmation.action === 'kick' ? `将 ${confirmation.name} 移出当前房间。这不是封禁，对方仍可重新加入。` : confirmation.action === 'transfer-host' ? `将房主管理权交给 ${confirmation.name}，准备状态保持不变。` : confirmation.action === 'dissolve' ? '所有成员将退出，房间码立即失效。' : isLobby ? '你将离开当前房间，并释放正式名额（若有）。' : '对局仍会继续计时。本局玩家再次进入时恢复本人身份，不会由观众接替。'}</p>
+    {active && confirmation && confirmationValid && <Modal title={confirmation.action === 'kick' ? '移出成员？' : confirmation.action === 'transfer-host' ? '转移房主？' : confirmation.action === 'dissolve' ? '解散房间？' : exit.title} onClose={() => setConfirmation(null)} dismissible={!operation.busy}>
+      <p>{confirmation.action === 'kick' ? `将 ${confirmation.name} 移出当前房间。这不是封禁，对方仍可重新加入。` : confirmation.action === 'transfer-host' ? `将房主管理权交给 ${confirmation.name}，准备状态保持不变。` : confirmation.action === 'dissolve' ? '所有成员将退出，房间码立即失效。' : exit.description}</p>
       <div className="button-row"><button className="button" disabled={operation.busy} onClick={() => setConfirmation(null)}>取消</button><button className="button button--primary" disabled={locked || !confirmationValid} onClick={confirm}>{operation.busy ? '正在确认…' : '确认操作'}</button></div>
     </Modal>}
   </>;

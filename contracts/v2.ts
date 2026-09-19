@@ -1,13 +1,13 @@
 /** Public transport vocabulary. No database rows or unfiltered engine state belong here. */
 import type { RoleId, RulesetConfig } from '../rulesets/types.ts';
 
-export const CONTRACT_VERSION = '2.1' as const;
+export const CONTRACT_VERSION = '2.2' as const;
 export const COMMAND_ACTIONS = ['SUBMIT_GUARD', 'SUBMIT_LAIKE', 'EDIT_PROPOSAL', 'CONFIRM_PROPOSAL', 'SUBMIT_CHECK', 'SUBMIT_RESCUE', 'SUBMIT_REVIVE', 'REGISTER_CANDIDACY', 'WITHDRAW_CANDIDACY', 'START_SPEECH', 'END_ELECTION_SPEECH', 'SUBMIT_ELECTION_VOTE', 'DESIGNATE_SPEECH', 'END_SPEECH', 'SUBMIT_DAY_VOTE', 'END_TIE_SPEECH', 'END_LAST_WORDS', 'SUBMIT_HANDOVER'] as const;
 export type CommandAction = typeof COMMAND_ACTIONS[number];
 export type RoomPhase = 'lobby' | 'playing' | 'review';
 export type MemberKind = 'formal' | 'public_spectator' | 'private_spectator';
 export type Presence = 'online' | 'reconnecting' | 'offline';
-export interface Profile { userId: string; username: string; avatarUrl: string | null; profileVersion: number }
+export interface Profile { userId: string; uid: string; nickname: string; avatarUrl: string | null; profileVersion: number }
 export interface AuthMe extends Profile { expiresAt: number }
 export interface RoomMemberDTO extends Profile {
   memberId: string;
@@ -23,6 +23,8 @@ export type ControlReason = 'kicked' | 'dissolved' | 'taken_over' | 'session_exp
 export interface ControlNotice { roomId: string; gameId: string | null; reason: ControlReason }
 export interface RequestIntent { requestId: string }
 export interface MatchIntent extends RequestIntent { gameId: string }
+export interface VoiceCredentials { url: string; token: string; roomName: string }
+export interface VoiceSyncResult { synced: true }
 export interface CommandIntent extends MatchIntent { windowInstanceId: string; action: CommandAction; targets?: string[]; revision?: number; direction?: 'asc' | 'desc' }
 export interface CommandReceipt {
   requestId: string;
@@ -42,7 +44,7 @@ export interface SubmissionDTO { action: CommandAction; windowInstanceId: string
 export interface TaskDTO { action: CommandAction; windowInstanceId: string; closesAt: number; targets: TargetSelection | null }
 export interface SeatDTO extends Profile { playerId: string; memberId: string | null; seat: number; alive: boolean; revealedRoleId: RoleId | null; presence: Presence | 'left'; isHost: boolean }
 export interface SelfDTO {
-  playerId: string; seat: number; username: string; roleId: RoleId; life: 'alive' | 'dying' | 'dead'; revealed: boolean; voteFrozen: boolean;
+  playerId: string; seat: number; nickname: string; roleId: RoleId; life: 'alive' | 'dying' | 'dead'; revealed: boolean; voteFrozen: boolean;
   abilities: { laikeBladeUsed: boolean; waterRescueUsed: boolean };
   guardHistory: readonly { nightNumber: number; targetPlayerIds: readonly string[] }[];
 }

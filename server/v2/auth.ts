@@ -26,32 +26,35 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
   const cookieOptions = { httpOnly: true, secure, sameSite: 'strict' as const, path: '/api/v2', maxAge: 7 * 86400_000 };
   const loginResponse = (res: Response, account: Account) => {
     const { token, session } = store.transaction(() => {
-      if (store.byName(account.username)?.passwordHash !== account.passwordHash) throw new ApiError(401, 'invalid_credentials');
+      if (store.byId(account.id)?.passwordHash !== account.passwordHash) throw new ApiError(401, 'invalid_credentials');
       return store.createSession(account.id);
     });
     res.cookie(cookieName, token, cookieOptions).json({ ...store.profile(account.id), expiresAt: session.expiresAt });
   };
-  router.post('/invitations/check', (req, res) => {
-    if (!limits.allow(`invite-check:${req.ip}`, 30, 60_000)) throw new ApiError(429, 'rate_limited');
-    const invitation = textField(req.body?.invitation, 'invitation');
-    if (!store.validInvite(invitation, 'register')) throw new ApiError(403, 'invalid_invitation');
-    res.json({ valid: true });
-  });
   router.post('/register', async (req, res) => {
     if (!limits.allow(`register:${req.ip}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
-    const username = textField(req.body?.username, 'username', 3, 32).toLowerCase();
-    if (!/^[a-z0-9_]{3,32}$/.test(username)) throw new ApiError(400, 'invalid_username');
-    const invitation = textField(req.body?.invitation, 'invitation');
+    const requestId = textField(req.body?.requestId, 'request_id', 1, 80);
+    const nickname = req.body?.nickname;
     const password = req.body?.password; validatePassword(password);
-    if (!store.validInvite(invitation, 'register')) throw new ApiError(403, 'invalid_invitation');
-    const account = store.register(username, await hashPassword(password), invitation);
+    const prior = store.registrationRequest(requestId);
+    if (prior) {
+      if (prior.nickname !== (typeof nickname === 'string' ? nickname.normalize('NFC') : nickname) || !prior.userId) throw new ApiError(409, 'request_id_reused');
+      const account = store.byId(prior.userId);
+      if (!account || !await verifyPassword(password, account.passwordHash)) throw new ApiError(409, 'request_id_reused');
+      res.status(200); loginResponse(res, account); return;
+    }
+    if (!store.registrationEnabled()) throw new ApiError(403, 'registration_closed');
+    const result = store.register(requestId, nickname, await hashPassword(password));
+    if (result.replayed && !await verifyPassword(password, result.account.passwordHash)) throw new ApiError(409, 'request_id_reused');
+    const account = result.account;
     res.status(201); loginResponse(res, account);
   });
   router.post('/login', async (req, res) => {
-    const username = textField(req.body?.username, 'username', 3, 32).toLowerCase();
+    const uid = textField(req.body?.uid, 'uid', 8, 20);
+    if (!/^\d{8,20}$/.test(uid)) throw new ApiError(400, 'invalid_uid');
     const password = textField(req.body?.password, 'password', 1, 128);
-    if (!limits.allow(`login-ip:${req.ip}`, 30, 60_000) || !limits.allow(`login-user:${username}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
-    const account = store.byName(username);
+    if (!limits.allow(`login-ip:${req.ip}`, 30, 60_000) || !limits.allow(`login-user:${uid}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
+    const account = store.byUid(uid);
     if (!await verifyPassword(password, account?.passwordHash ?? null) || !account) throw new ApiError(401, 'invalid_credentials');
     if (account.disabledAt !== null) throw new ApiError(403, 'account_disabled');
     loginResponse(res, account);
@@ -64,14 +67,6 @@ export function authRouter(store: AccountStore, secure: boolean, onRevoked: (use
     const session = requireAccount(store, req, cookieName);
     store.logout(session.id); await onRevoked(session.userId, { reason: 'logout', sessionId: session.id });
     res.clearCookie(cookieName, { ...cookieOptions, maxAge: undefined }).json({ loggedOut: true });
-  });
-  router.post('/reset-password', async (req, res) => {
-    if (!limits.allow(`reset:${req.ip}`, 10, 60_000)) throw new ApiError(429, 'rate_limited');
-    const reset = textField(req.body?.token, 'token');
-    const password = req.body?.password; validatePassword(password);
-    if (!store.validInvite(reset, 'reset')) throw new ApiError(403, 'invalid_reset_token');
-    const userId = store.resetPassword(reset, await hashPassword(password)); await onRevoked(userId, { reason: 'credentials_changed' });
-    res.json({ reset: true });
   });
   router.post('/change-password', async (req, res) => {
     const session = requireAccount(store, req, cookieName);

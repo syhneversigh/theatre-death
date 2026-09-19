@@ -48,7 +48,7 @@ async function makeHarness(): Promise<Harness> {
   const logs = createLogStore(':memory:');
   const users: User[] = [];
   for (let index = 1; index <= 20; index += 1) {
-    const account = accounts.register(`maintenance_user_${index}`, 'dummy-hash', accounts.invite().token);
+    const account = accounts.register(`maintenance-user-${index}`, `maintenance${String.fromCharCode(97 + index)}`, 'dummy-hash').account;
     const session = accounts.createSession(account.id);
     users.push({ userId: account.id, sessionId: session.session.id, cookie: `td_account_v2=${session.token}` });
   }

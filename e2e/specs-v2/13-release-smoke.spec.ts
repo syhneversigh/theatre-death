@@ -20,7 +20,7 @@ function smokeBaseURL(): { value: string; origin: string } {
 
 async function loginApi(baseURL: string, account: RoomAccount): Promise<APIRequestContext> {
   const api = await apiRequest.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL } });
-  const response = await api.post('/api/v2/auth/login', { data: { username: account.username, password: account.password } });
+  const response = await api.post('/api/v2/auth/login', { data: { uid: account.uid, password: account.password } });
   if (response.status() !== 200) throw new Error(`bot login failed: ${response.status()}`);
   return api;
 }
@@ -99,20 +99,21 @@ test('release smoke：candidate同源静态产物、注册头像与真实五人S
       expect(response.status(), blockedPath).toBe(404);
     }
 
-    await page.getByRole('button', { name: '使用邀请码注册' }).click();
-    await page.getByLabel('注册邀请码').fill(accountCase.invitation);
-    await page.getByRole('button', { name: /验证邀请码/ }).click();
-    await expect(page.getByRole('heading', { name: '留下你的名字' })).toBeVisible();
-    await page.getByLabel('账号').fill(accountCase.username);
-    await page.getByLabel('设置新密码').fill(accountCase.password);
+    await page.getByRole('button', { name: '直接注册' }).click();
+    await expect(page.getByRole('heading', { name: '创建账号' })).toBeVisible();
+    await page.getByLabel('昵称').fill(accountCase.nickname);
+    await page.getByLabel('设置密码').fill(accountCase.password);
     await page.getByLabel('确认密码').fill(accountCase.password);
-    await page.getByRole('button', { name: /创建账号并入席/ }).click();
+    await page.getByRole('button', { name: '创建账号' }).click();
+    await expect(page.getByRole('heading', { name: '账号创建成功' })).toBeVisible();
+    const registeredUid = await page.getByLabel('登录 UID').inputValue();
+    await page.getByRole('button', { name: '进入剧院' }).click();
     await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
     await page.reload();
     await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
     await page.getByRole('button', { name: '退出登录' }).click();
     await expect(page.getByRole('heading', { name: '欢迎入席' })).toBeVisible();
-    await page.getByLabel('账号').fill(accountCase.username);
+    await page.getByLabel('数字 UID').fill(registeredUid);
     await page.getByLabel('登录密码').fill(accountCase.password);
     await page.getByRole('button', { name: /进入剧院/ }).click();
     await expect(page.getByRole('heading', { name: '下一场，等你入席。' })).toBeVisible();
@@ -149,13 +150,13 @@ test('release smoke：candidate同源静态产物、注册头像与真实五人S
 
     joinContext = await browser.newContext();
     joinPage = await joinContext.newPage();
-    await loginRoomAccount(joinPage, { username: loadAccountCase(testInfo.project.name).rooms![0]!.username, password: loadAccountCase(testInfo.project.name).rooms![0]!.password, userId: '' });
+    await loginRoomAccount(joinPage, loadAccountCase(testInfo.project.name).rooms![0]!);
     await enterRoom(joinPage, code);
     const framesBeforeBots = viewUpdatedFrames.length;
     for (const account of loadAccountCase(testInfo.project.name).rooms!.slice(1, 4)) {
       const api = await loginApi(baseURL, account);
       botApis.push(api);
-      await botEnterReady(api, code, account.username);
+      await botEnterReady(api, code, account.uid);
     }
     await expect.poll(() => viewUpdatedFrames.length, { timeout: 15_000, intervals: [100, 250] }).toBeGreaterThan(framesBeforeBots);
     await expect.poll(() => page.locator('.member-card').count(), { timeout: 15_000, intervals: [250] }).toBe(5);

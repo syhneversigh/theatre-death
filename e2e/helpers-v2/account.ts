@@ -1,16 +1,20 @@
 import { readFileSync } from 'node:fs';
 
 export interface LoginAccount {
-  username: string;
+  uid: string;
+  nickname: string;
+  /** Compatibility label for room assertions; auth always uses uid. */
+  username?: string;
   password: string;
 }
 
 export interface RegistrationAccount extends LoginAccount {
-  invitation: string;
+  requestId?: string;
+  invitation?: string;
 }
 
 export interface ResetAccount extends LoginAccount {
-  token: string;
+  token?: string;
 }
 
 export interface RoomAccount extends LoginAccount {
@@ -31,11 +35,11 @@ export function loadAccountCase(projectName: string): AccountCase {
   const all = JSON.parse(readFileSync('/test-access/accounts.json', 'utf8')) as Record<string, AccountCase | undefined>;
   const account = all[projectName];
   if (!account) throw new Error(`missing disposable account case for ${projectName}`);
-  return account;
+  return { ...account, username: account.username ?? account.nickname };
 }
 
-export function newPasswordFor(username: string): string {
-  return `V2-changed-${username}-password`;
+export function newPasswordFor(_uid: string): string {
+  return 'changed8888';
 }
 
 export function staticPng(): Buffer {

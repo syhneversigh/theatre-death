@@ -6,7 +6,7 @@ import { createFakeClock, type FakeClock } from '../server/clock.ts';
 import { createLogStore, type LogStore } from '../server/log-store.ts';
 import type { VoiceCredentials, VoiceService } from '../voice/livekit.ts';
 
-export interface User { username: string; userId: string; cookie: string; sessionId: string }
+export interface User { uid: string; nickname: string; userId: string; cookie: string; sessionId: string }
 export interface HttpHarness {
   app: ReturnType<typeof createV2App>;
   accounts: AccountStore;
@@ -43,10 +43,10 @@ export async function makeHarness(count = 20, voice?: VoiceService): Promise<Htt
   const logStore = createLogStore(':memory:');
   const users: User[] = [];
   for (let index = 1; index <= count; index += 1) {
-    const username = `http_user_${index}`;
-    const account = accounts.register(username, 'dummy-hash', accounts.invite().token);
+    const nickname = `httpuser${String.fromCharCode(96 + index)}`;
+    const account = accounts.register(`http-user-${index}`, nickname, 'dummy-hash').account;
     const session = accounts.createSession(account.id);
-    users.push({ username, userId: account.id, cookie: `td_account_v2=${session.token}`, sessionId: session.session.id });
+    users.push({ uid: account.uid, nickname, userId: account.id, cookie: `td_account_v2=${session.token}`, sessionId: session.session.id });
   }
   const app = createV2App({ accounts, clock, logStore, origin: 'http://allowed.test', voice });
   const server = createServer(app.app);

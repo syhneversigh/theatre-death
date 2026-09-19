@@ -9,7 +9,7 @@ import { createLogStore, type LogStore } from '../server/log-store.ts';
 import { hashPassword } from '../server/v2/passwords.ts';
 import { io, type Socket } from 'socket.io-client';
 
-export type AdminUser = { userId: string; username: string; password: string; cookie: string; sessionId: string };
+export type AdminUser = { userId: string; uid: string; nickname: string; password: string; cookie: string; sessionId: string };
 export type AdminHarness = {
   app: ReturnType<typeof createV2App>; accounts: AccountStore; clock: FakeClock; logStore: LogStore;
   server: Server; base: string; directory: string; adminCookie: string | null; users: AdminUser[];
@@ -26,10 +26,10 @@ export async function makeAdminHarness(configured = true, count = 14): Promise<A
   const directory = mkdtempSync(join(tmpdir(), 'theater-admin-api-'));
   const users: AdminUser[] = [];
   for (let index = 1; index <= count; index += 1) {
-    const password = `player password ${index} value`;
-    const account = accounts.register(`admin_player_${index}`, await hashPassword(password), accounts.invite().token);
+    const password = `play${String.fromCharCode(96 + index)}8888`;
+    const account = accounts.register(`admin-player-${index}`, `admin_player_${String.fromCharCode(96 + index)}`, await hashPassword(password)).account;
     const session = accounts.createSession(account.id);
-    users.push({ userId: account.id, username: account.username, password, sessionId: session.session.id, cookie: `td_account_v2=${session.token}` });
+    users.push({ userId: account.id, uid: account.uid, nickname: account.nickname, password, sessionId: session.session.id, cookie: `td_account_v2=${session.token}` });
   }
   // The admin dependency is intentionally supplied as an opaque test-only option
   // until the implementation lands; current createV2App ignores it and should red.

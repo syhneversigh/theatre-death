@@ -42,7 +42,7 @@ describe('2.1 foundation account cookie contract', () => {
     const server = createServer(app);
     resources.push({ close: () => new Promise<void>((resolve) => server.close(() => resolve())) });
     const base = await listen(server);
-    const account = store.register('custom_user', 'dummy-hash', store.invite().token);
+    const account = store.register('foundation-1', 'customuser', 'dummy-hash').account;
     const session = store.createSession(account.id);
     const me = await fetch(`${base}/auth/me`, { headers: { cookie: `custom_account=${session.token}` } });
     expect(me.status).toBe(200);
@@ -57,7 +57,7 @@ describe('2.1 foundation account cookie contract', () => {
     const accounts = new AccountStore(':memory:');
     const clock = createFakeClock(1_000);
     const logStore = createLogStore(':memory:');
-    const account = accounts.register('socket_user', 'dummy-hash', accounts.invite().token);
+    const account = accounts.register('foundation-2', 'socketuser', 'dummy-hash').account;
     const session = accounts.createSession(account.id);
     const app = createV2App({ accounts, clock, logStore, origin: 'http://allowed.test', cookieName: 'custom_account' });
     const server = createServer(app.app);

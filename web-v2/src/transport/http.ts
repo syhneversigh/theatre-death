@@ -58,7 +58,8 @@ export const post = <T>(path: string, body: object, signal?: AbortSignal) => req
 
 const messages: Record<string, string> = {
   invalid_credentials: '账号或密码不正确，请重试。', invalid_invitation: '邀请码无效、已使用或已过期。',
-  username_taken: '这个账号已被使用，请换一个。', invalid_username: '账号格式不符合要求。', invalid_password: '密码格式不符合要求。',
+  invalid_uid: 'UID格式不正确。', invalid_nickname: '昵称须为2–32个文字或下划线，不能包含数字、空格或Emoji。', invalid_password: '密码格式不符合要求。',
+  registration_closed: '暂未开放新账号注册。', account_deleted: '该注册请求对应的账号已经删除。',
   unauthorized: '请先登录。', session_expired: '登录已失效，请重新登录。',
   account_disabled: '账户已停用，请联系维护者。',
   takeover_required: '此身份正在另一台设备上使用，请确认是否接管。',

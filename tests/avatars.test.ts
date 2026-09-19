@@ -135,7 +135,7 @@ describe('AvatarStore persistence and garbage collection', () => {
   async function accountFixture() {
     let now = 10_000;
     const accounts = new AccountStore(':memory:', () => now);
-    const row = accounts.register('avatar_store_user', 'hash', accounts.invite().token);
+    const row = accounts.register('avatar-store-user', 'avatarstoreuser', 'hash').account;
     const directory = await tempDirectory();
     resources.push(accounts);
     return { accounts, userId: row.id, directory, now: () => now, advance: (ms: number) => { now += ms; } };

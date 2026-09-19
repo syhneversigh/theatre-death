@@ -51,7 +51,8 @@ interface User {
 }
 
 function account(accounts: AccountStore, username: string): User {
-  const row = accounts.register(username, 'hash', accounts.invite().token);
+  const nickname = username.replace(/\d/g, digit => String.fromCharCode(97 + Number(digit)));
+  const row = accounts.register(`round-${username}`, nickname, 'hash').account;
   return { userId: row.id, session: accounts.createSession(row.id).session };
 }
 

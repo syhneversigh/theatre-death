@@ -63,7 +63,7 @@ const createRoom = async (players) => {
   for (const player of players) {
     const { body } = await jsonRequest(player, `/api/v2/rooms/${created.roomCode}/view`);
     player.expectedPlayerId = body?.viewer?.subjectPlayerId;
-    if (!player.expectedPlayerId || body?.private?.self?.username !== player.username) throw new Error('started player identity mismatch');
+    if (!player.expectedPlayerId || body?.private?.self?.nickname !== player.nickname) throw new Error('started player identity mismatch');
   }
   return { ...created, gameId: started.gameId };
 };
@@ -87,7 +87,7 @@ const validateView = (client, body) => {
 
 try {
 const { body: bootstrap } = await jsonRequest(accounts[0], '/api/v2/bootstrap');
-if (bootstrap?.contractVersion !== '2.1') throw new Error('capacity client requires contract 2.1');
+if (bootstrap?.contractVersion !== '2.2') throw new Error('capacity client requires contract 2.2');
 const room1 = await createRoom(accounts.slice(0, 13));
 const room2 = await createRoom(accounts.slice(13, 26));
 const rooms = [room1, room2];
@@ -144,7 +144,7 @@ const tick = async () => {
     validateView(client, result.body);
     if (!client.player) return;
     if (result.body.capabilities?.canPostPublic && Date.now() - client.lastChat >= 30_000) {
-      const payload = { gameId: client.room.gameId, clientMessageId: randomUUID(), channel: 'public', text: `capacity-${client.account.username}` };
+      const payload = { gameId: client.room.gameId, clientMessageId: randomUUID(), channel: 'public', text: `capacity-${client.account.uid}` };
       const first = await post(client.account, `/api/v2/rooms/${client.room.roomCode}/chat`, payload, true);
       const second = await post(client.account, `/api/v2/rooms/${client.room.roomCode}/chat`, payload, true);
       if (JSON.stringify(first.body) !== JSON.stringify(second.body) || !first.body?.message?.messageId) stats.receiptMismatches += 1;
@@ -162,7 +162,7 @@ const tick = async () => {
     if (!window || !action || client.submittedWindows.has(window.instanceId)) return;
     client.lastCommand = Date.now();
     client.submittedWindows.add(window.instanceId);
-    const requestId = `capacity-${client.account.username}-${Date.now()}`;
+    const requestId = `capacity-${client.account.uid}-${Date.now()}`;
     const payload = { requestId, gameId: client.room.gameId, action, windowInstanceId: window.instanceId, targets: [] };
     const first = await post(client.account, `/api/v2/rooms/${client.room.roomCode}/command`, payload, true);
     if (action === 'START_SPEECH' || action === 'END_SPEECH') {
@@ -194,7 +194,7 @@ const report = {
   finishedAt: new Date().toISOString(),
   durationMs,
   observedDurationMs,
-  contractVersion: '2.1',
+  contractVersion: '2.2',
   clients: { accounts: 100, activeSockets: stats.sockets, rooms: 2, players: 26, publicSpectators: 24 },
   ordinaryApi: { samples: sorted.length, p95Ms: percentile(sorted, 0.95), excluded: ['/healthz', '/api/v2/auth/login', '/api/v2/diagnostics'] },
   diagnostics: diagnosticsSamples.length ? { samples: diagnosticsSamples.length, peakRss: Math.max(...diagnosticsSamples.map((sample) => sample.rss)), maxEventLoopP99Ms: Math.max(...diagnosticsSamples.map((sample) => sample.eventLoopP99Ms)) } : null,

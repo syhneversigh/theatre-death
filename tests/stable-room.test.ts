@@ -21,7 +21,7 @@ function setup() {
 
 function member(index: number, userId: string, sessionId: string | null, kind: ActiveMember['kind'] = 'formal'): ActiveMember {
   return {
-    memberId: `m_${index}`, userId, username: `user_${index}`, kind, joinedAt: index, joinedOrder: index,
+    memberId: `m_${index}`, userId, uid: String(10_000_001 + index), nickname: `user${String.fromCharCode(96 + index)}`, kind, joinedAt: index, joinedOrder: index,
     ready: true, sessionId, epoch: `epoch_${index}`, presence: 'online', connections: new Set(), disconnectAt: null,
   };
 }
@@ -43,12 +43,12 @@ describe('StableRoom lifecycle contract', () => {
     expect(room.gameId).toBeNull();
     const formal: string[] = [];
     for (let index = 1; index <= 13; index += 1) {
-      const account = accounts.register(`formal_${index}`, 'hash', accounts.invite().token);
+      const account = accounts.register(`formal-${index}`, `formal${String.fromCharCode(97 + index)}`, 'hash').account;
       const session = accounts.createSession(account.id);
       formal.push(account.id);
       room.members.set(account.id, member(index, account.id, session.session.id));
     }
-    const spectator = accounts.register('spectator_1', 'hash', accounts.invite().token);
+    const spectator = accounts.register('spectator-1', 'spectatorone', 'hash').account;
     const spectatorSession = accounts.createSession(spectator.id);
     room.members.set(spectator.id, member(14, spectator.id, spectatorSession.session.id, 'public_spectator'));
     room.hostMemberId = room.members.get(formal[0]!)!.memberId;
@@ -68,7 +68,7 @@ describe('StableRoom lifecycle contract', () => {
     const { deps, accounts } = setup();
     const room = new StableRoom('STABLE03', THEATER_DEATH_13_V2, deps);
     for (let index = 1; index <= 13; index += 1) {
-      const account = accounts.register(`queue_${index}`, 'hash', accounts.invite().token);
+      const account = accounts.register(`queue-${index}`, `queue${String.fromCharCode(97 + index)}`, 'hash').account;
       const session = accounts.createSession(account.id);
       room.members.set(account.id, member(index, account.id, session.session.id));
     }
@@ -85,7 +85,7 @@ describe('StableRoom lifecycle contract', () => {
     const { deps, accounts, logStore, clock } = setup();
     const room = new StableRoom('STABLE04', THEATER_DEATH_13_V2, deps);
     for (let index = 1; index <= 13; index += 1) {
-      const account = accounts.register(`complete_${index}`, 'hash', accounts.invite().token);
+      const account = accounts.register(`complete-${index}`, `complete${String.fromCharCode(97 + index)}`, 'hash').account;
       const session = accounts.createSession(account.id);
       room.members.set(account.id, member(index, account.id, session.session.id));
     }

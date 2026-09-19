@@ -53,7 +53,7 @@ export function createV2App(deps: V2Deps) {
     if (closing) return;
     if (!room.dissolved) {
       governance.reconcile(room, event); empty.observe(room); room.recordCompletion();
-      if (room.access && room.gameId) { access.set(room.gameId, room.access); void media.sync(room.access); }
+      if (!room.dissolved && room.access && room.gameId) { access.set(room.gameId, room.access); void media.sync(room.access); }
     }
     hub?.refresh(room.roomId);
   };
@@ -137,7 +137,7 @@ export function createV2App(deps: V2Deps) {
   });
   app.use('/api/v2/auth', authRouter(accounts, deps.secureCookies ?? false, revokeUser, deps.cookieName));
   app.use('/api/v2/admin', admin.router);
-  app.get('/api/v2/bootstrap', (_req, res) => res.json(bootstrap(!!deps.voice, !!deps.avatars)));
+  app.get('/api/v2/bootstrap', (_req, res) => res.json(bootstrap(!!deps.voice, !!deps.avatars, accounts.registrationEnabled())));
   app.get('/api/v2/catalog', (_req, res) => res.json(catalog()));
   app.get('/healthz', (_req, res) => res.json({ status: 'ok', apiVersion: 2, contractVersion: CONTRACT_VERSION, rulesVersion: '2.0' }));
   app.get('/', (_req, res) => res.json({ service: 'theater-death-v2', api: '/api/v2', contractVersion: CONTRACT_VERSION, ui: 'not-included' }));
@@ -164,6 +164,17 @@ export function createV2App(deps: V2Deps) {
     const room = roomFor(req); const s = intent(req);
     return directory.mutate(room, () => apply(room, session(req)), s);
   };
+  router.patch('/me/profile', async (req, res) => {
+    const current = session(req), nickname = req.body?.nickname;
+    const profile = await directory.transaction(async () => {
+      const rooms = [...directory.byId.values()].filter(room => !room.dissolved && (room.members.has(current.userId) || room.participants.has(current.userId)));
+      if (rooms.some(room => room.phase === 'playing')) throw new ApiError(409, 'account_in_active_game');
+      const next = accounts.rename(current.userId, nickname);
+      for (const room of rooms) await room.enqueue(() => { const member = room.members.get(current.userId); if (member) member.nickname = next.nickname; refresh(room); });
+      return next;
+    });
+    res.json(profile);
+  });
   const player = (room: StableRoom, s: AccountSession) => {
     const member = directory.member(room, s);
     const seat = room.participants.get(member.userId);
@@ -256,8 +267,8 @@ export function createV2App(deps: V2Deps) {
     const review = buildReviewView({ state: runtime.state, events: runtime.events, messages: runtime.chat })!;
     res.json({ review: { ...review, startedAt: room.matchStartedAt, endedAt: room.matchEndedAt, durationMs: room.matchEndedAt! - room.matchStartedAt!, players: review.players.map(({ nickname: _name, ...p }) => {
       const subject = [...room.participants.values()].find((m) => m.playerId === p.playerId)!;
-      const profile = accounts.profile(subject.userId);
-      return { ...p, username: subject.username, avatarUrl: profile.avatarUrl };
+      const profile = accounts.profileOrNull(subject.userId);
+      return { ...p, uid: subject.uid, nickname: subject.nickname, avatarUrl: profile?.avatarUrl ?? null };
     }) } });
   });
   router.post('/rooms/:code/command', async (req, res) => {
@@ -320,7 +331,7 @@ export function createV2App(deps: V2Deps) {
   router.post('/rooms/:code/second-screen/redeem', async (req, res) => { const s = intent(req); limited(req, 'screen', 10, 60_000); res.json(await grants.redeem(roomFor(req), s, matchId(req), textField(req.body?.token, 'token'))); });
   router.post('/rooms/:code/second-screen/revoke', async (req, res) => { const s = intent(req); await grants.revoke(roomFor(req), s, matchId(req)); res.json({ revoked: true }); });
   router.post('/rooms/:code/voice/token', async (req, res) => { const s = intent(req); limited(req, 'voice', 6, 3000); const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req)); res.json(await media.issue(room.access!, s)); });
-  router.post('/rooms/:code/voice/sync', async (req, res) => { const s = intent(req); limited(req, 'voice', 6, 3000); const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req)); if (!deps.voice) throw new ApiError(409, 'voice_disabled'); await media.sync(room.access!); res.json({ synced: true }); });
+  router.post('/rooms/:code/voice/sync', async (req, res) => { const s = intent(req); limited(req, 'voice', 6, 3000); const room = roomFor(req); directory.member(room, s); requireMatch(room, matchId(req)); if (!deps.voice) throw new ApiError(409, 'voice_disabled'); try { await media.sync(room.access!, true); } catch { throw new ApiError(503, 'voice_unavailable'); } res.json({ synced: true }); });
   router.get('/diagnostics', (_req, res) => res.json({ ...diagnostics.snapshot(), rooms: directory.byId.size, playingRooms: [...directory.byId.values()].filter((r) => r.phase === 'playing').length, connections: hub.connectionCount() }));
   app.use('/api/v2', router);
   app.use((_req, res) => res.status(404).json({ error: { code: 'not_found' } }));

@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "剧院死神后端",
-    "version": "2.1",
-    "description": "候选契约；实施与验证状态见client-contract-2.1-progress.md。API版本2、玩法规则2.0。无rc.1线协议兼容。"
+    "version": "2.2",
+    "description": "数字UID登录、可改昵称、直接注册与管理员账号管理契约。API版本2、玩法规则2.0。"
   },
   "servers": [
     {
@@ -74,68 +74,11 @@
         }
       }
     },
-    "/auth/invitations/check": {
-      "parameters": [],
-      "post": {
-        "summary": "注册邀请码预检（不消费）",
-        "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "invitation": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "invitation"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "valid": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "valid"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/auth/register": {
       "parameters": [],
       "post": {
-        "summary": "邀请码注册并设置会话Cookie",
-        "description": "注册响应未知时使用登录恢复，不能盲目重试注册。",
+        "summary": "直接注册、分配数字UID并设置会话Cookie",
+        "description": "相同requestId、昵称和密码可恢复已完成注册；不同载荷复用ID被拒绝。",
         "security": [],
         "requestBody": {
           "required": true,
@@ -144,20 +87,20 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "username": {
+                  "requestId": {
+                    "type": "string"
+                  },
+                  "nickname": {
                     "type": "string"
                   },
                   "password": {
                     "type": "string"
-                  },
-                  "invitation": {
-                    "type": "string"
                   }
                 },
                 "required": [
-                  "username",
-                  "password",
-                  "invitation"
+                  "requestId",
+                  "nickname",
+                  "password"
                 ],
                 "additionalProperties": true
               }
@@ -200,7 +143,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "username": {
+                  "uid": {
                     "type": "string"
                   },
                   "password": {
@@ -208,7 +151,7 @@
                   }
                 },
                 "required": [
-                  "username",
+                  "uid",
                   "password"
                 ],
                 "additionalProperties": true
@@ -318,65 +261,11 @@
         }
       }
     },
-    "/auth/reset-password": {
-      "parameters": [],
-      "post": {
-        "summary": "使用维护者签发的重置令牌",
-        "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string"
-                  },
-                  "password": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "token",
-                  "password"
-                ],
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "reset": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "reset"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "失败。按error.code处理；未知结果不能视为操作已失败。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
+    "/me/profile": {
+      "patch": {
+        "summary": "修改昵称；有关联进行中对局时拒绝",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "nickname": { "type": "string", "minLength": 2, "maxLength": 32 } }, "required": ["nickname"] } } } },
+        "responses": { "200": { "description": "更新后的Profile" }, "default": { "description": "失败", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } } }
       }
     },
     "/auth/change-password": {
@@ -860,7 +749,8 @@
         }
       ],
       "post": {
-        "summary": "显式离开，当前局参赛身份仍可恢复",
+        "summary": "离开房间但保持账号登录；房间存在时可恢复当前局身份",
+        "description": "局中为暂离，计时继续。终局无正式成员时立即关闭房间并移出剩余观众，最终退出响应seatRetained=false；离线正式成员仍计入房间。大厅与局中无正式成员按5分钟清理。相同requestId重试可读取原成功回执。",
         "requestBody": {
           "required": true,
           "content": {
@@ -2460,7 +2350,10 @@
           "userId": {
             "type": "string"
           },
-          "username": {
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
             "type": "string"
           },
           "avatarUrl": {
@@ -2479,7 +2372,8 @@
         },
         "required": [
           "userId",
-          "username",
+          "uid",
+          "nickname",
           "avatarUrl",
           "profileVersion"
         ],
@@ -2491,7 +2385,10 @@
           "userId": {
             "type": "string"
           },
-          "username": {
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
             "type": "string"
           },
           "avatarUrl": {
@@ -2513,7 +2410,8 @@
         },
         "required": [
           "userId",
-          "username",
+          "uid",
+          "nickname",
           "avatarUrl",
           "profileVersion",
           "expiresAt"
@@ -2835,7 +2733,10 @@
           "userId": {
             "type": "string"
           },
-          "username": {
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
             "type": "string"
           },
           "avatarUrl": {
@@ -2894,7 +2795,8 @@
         },
         "required": [
           "userId",
-          "username",
+          "uid",
+          "nickname",
           "avatarUrl",
           "profileVersion",
           "memberId",
@@ -2913,7 +2815,10 @@
           "userId": {
             "type": "string"
           },
-          "username": {
+          "uid": {
+            "type": "string"
+          },
+          "nickname": {
             "type": "string"
           },
           "avatarUrl": {
@@ -2973,7 +2878,8 @@
         },
         "required": [
           "userId",
-          "username",
+          "uid",
+          "nickname",
           "avatarUrl",
           "profileVersion",
           "playerId",
@@ -3530,7 +3436,7 @@
           "seat": {
             "type": "integer"
           },
-          "username": {
+          "nickname": {
             "type": "string"
           },
           "roleId": {
@@ -3592,7 +3498,7 @@
         "required": [
           "playerId",
           "seat",
-          "username",
+          "nickname",
           "roleId",
           "life",
           "revealed",
@@ -4222,7 +4128,7 @@
           "contractVersion": {
             "type": "string",
             "enum": [
-              "2.1"
+              "2.2"
             ]
           },
           "rulesVersion": {
@@ -4677,7 +4583,10 @@
                 "seat": {
                   "type": "integer"
                 },
-                "username": {
+                "uid": {
+                  "type": "string"
+                },
+                "nickname": {
                   "type": "string"
                 },
                 "avatarUrl": {
@@ -4707,7 +4616,8 @@
               "required": [
                 "playerId",
                 "seat",
-                "username",
+                "uid",
+                "nickname",
                 "avatarUrl",
                 "roleId",
                 "life",
@@ -4862,7 +4772,7 @@
           "contractVersion": {
             "type": "string",
             "enum": [
-              "2.1"
+              "2.2"
             ]
           },
           "rulesVersion": {
@@ -4877,10 +4787,11 @@
               "registration": {
                 "type": "string",
                 "enum": [
-                  "invitation"
+                  "open",
+                  "closed"
                 ]
               },
-              "username": {
+              "uid": {
                 "type": "object",
                 "properties": {
                   "minLength": {
@@ -4898,6 +4809,15 @@
                   "maxLength",
                   "pattern"
                 ],
+                "additionalProperties": false
+              },
+              "nickname": {
+                "type": "object",
+                "properties": {
+                  "minLength": { "type": "integer" },
+                  "maxLength": { "type": "integer" }
+                },
+                "required": ["minLength", "maxLength"],
                 "additionalProperties": false
               },
               "password": {
@@ -4922,7 +4842,8 @@
             },
             "required": [
               "registration",
-              "username",
+              "uid",
+              "nickname",
               "password",
               "sessionMaxAgeSeconds"
             ],

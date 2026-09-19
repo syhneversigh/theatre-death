@@ -17,7 +17,7 @@ export class SnapshotCursor {
   }
   ticket(): number { return this.epoch; }
   accept(view: RoomSnapshot, ticket = this.epoch): SnapshotChange {
-    if (ticket !== this.epoch || view.contractVersion !== '2.1' || view.rulesVersion !== '2.0' ||
+    if (ticket !== this.epoch || view.contractVersion !== '2.2' || view.rulesVersion !== '2.0' ||
       view.viewer.userId !== this.userId || view.roomId !== this.roomId ||
       !Number.isSafeInteger(view.viewVersion) || view.viewVersion < this.version || !Number.isFinite(view.serverTime)) return unchanged;
     // Equal samples do not reset the local elapsed time and extend a deadline.

@@ -1,12 +1,12 @@
 {
-  "currentRoomId": "r_566b63041ef82b1668639b8497c3160a",
+  "currentRoomId": "r_3ae3caa6617e0a6874a617c653eac330",
   "rooms": [
     {
-      "roomId": "r_566b63041ef82b1668639b8497c3160a",
-      "roomCode": "BXRQBR",
+      "roomId": "r_3ae3caa6617e0a6874a617c653eac330",
+      "roomCode": "6BSMRA",
       "gameId": null,
       "phase": "lobby",
-      "memberId": "m_99a533c73a42dc8354e892ba750afcb7",
+      "memberId": "m_632d6761bbd53a8596c834388e055bea",
       "kind": "formal",
       "playerId": null,
       "activeHere": true,

@@ -29,11 +29,13 @@ function setup() {
   governance = new RoomGovernance(directory);
   empty = new EmptyRooms(directory, governance);
   stores.push(accounts, logStore);
-  return { clock, accounts, directory, governance, empty, logStore, controls };
+  const presence = new MemberPresence(directory);
+  return { clock, accounts, directory, governance, empty, logStore, controls, presence };
 }
 
 function account(accounts: AccountStore, name: string) {
-  const row = accounts.register(name, 'hash', accounts.invite().token);
+  const nickname = name.replace(/\d/g, digit => String.fromCharCode(97 + Number(digit)));
+  const row = accounts.register(`empty-${name}`, nickname, 'hash').account;
   return { userId: row.id, session: accounts.createSession(row.id).session };
 }
 
@@ -156,5 +158,33 @@ describe('v2 empty room policy', () => {
     expect(directory.byCode.has(room.code)).toBe(true);
     expect(room.formalMembers()).toHaveLength(13);
     expect(room.runtime!.state?.win).toBeDefined();
+  });
+
+  it('disposes a reviewed room immediately after the last formal member leaves and removes spectators', async () => {
+    const { accounts, directory, empty } = setup();
+    const { room, players } = await fullMatch(directory, accounts, 'review_empty');
+    const spectator = account(accounts, 'review_empty_spectator');
+    await directory.enter(room, spectator.session);
+    room.runtime!.state = { ...room.runtime!.state!, phase: 'ended', win: { winner: 'human', dayNumber: 1, reason: 'review_empty' } };
+    for (const player of players.slice(1)) await directory.leave(room, player.session);
+    expect(room.phase).toBe('review');
+    await directory.leave(room, players[0]!.session);
+    expect(room.dissolved).toBe(true);
+    expect(directory.byCode.has(room.code)).toBe(false);
+    expect(room.members.size).toBe(0);
+    expect(empty.pending.size).toBe(0);
+  });
+
+  it('keeps a reviewed room when the host leaves while formal successors remain online', async () => {
+    const { accounts, directory, presence } = setup();
+    const { room, players } = await fullMatch(directory, accounts, 'review_successor');
+    room.runtime!.state = { ...room.runtime!.state!, phase: 'ended', win: { winner: 'human', dayNumber: 1, reason: 'review_successor' } };
+    const successor = room.participants.get(players[1]!.userId)!;
+    await presence.connect(room, players[1]!.session, 'review-successor');
+    await directory.leave(room, players[0]!.session);
+    expect(room.dissolved).toBe(false);
+    expect(directory.byCode.has(room.code)).toBe(true);
+    expect(room.phase).toBe('review');
+    expect(room.hostMemberId).toBe(successor.memberId);
   });
 });
