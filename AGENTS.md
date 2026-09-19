@@ -1,5 +1,11 @@
 # theater_death 项目规则
 
+## 当前本地服务与整理授权（2026-09-19）
+
+- 用户要求仅保留最后一版服务；本机唯一项目服务为5174，镜像 `theater-death-frontend-v2:local`，卷 `theater-death-frontend-local_frontend-local-data`。这项新指令覆盖下方历史记录中的“保持3000/3001运行”；不得自动恢复旧实例。
+- 工程文档统一入口位于工作区 `documents/README.md`。仓库文档保留必要原件，documents内为完整整理快照；根目录原始需求、计划及验收证据已归档。历史独立非空数据库存放于工作区 `retained-data`，不得作为新服务数据导入或删除。
+- 日常使用 `deploy/frontend-local.ps1`；当前`.env.frontend-local`与账户卷必须保留。旧版本源码、回归测试、美术原件、当前构建和浏览器测试依赖仍属于工程必要内容。
+
 ## 前端契约 2.1 授权（2026-09-18）
 
 - 用户已批准 docs/client-contract-2.1-plan.md。当前工作转入 backend/client-contract-2.1，进度见 docs/client-contract-2.1-progress.md。
